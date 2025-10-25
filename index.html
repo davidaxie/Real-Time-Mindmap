@@ -691,38 +691,12 @@
           return;
         }
 
-        const tokens = tokenize(text);
-        const phrases = extractPhrases(text);
-
-        if (tokens.length) {
-          const weight = isFinal ? 1 : 0.4;
-
-          // Add individual tokens as nodes
-          for (const token of tokens) {
-            addNode(token, token, weight);
-          }
-
-          // Add phrases as nodes (higher weight for multi-word concepts)
-          for (const phrase of phrases) {
-            addNode(phrase, phrase, weight * 1.5); // Phrases worth 1.5x tokens
-          }
-
-          // Connect tokens in sequence
-          for (let i = 0; i < tokens.length - 1; i++) {
-            addEdge(tokens[i], tokens[i + 1], weight * 0.8);
-          }
-
-          // Connect phrases to their component tokens
-          for (const phrase of phrases) {
-            const words = phrase.split(" ");
-            if (words.length === 2) {
-              addEdge(phrase, words[0], weight * 1.2);
-              addEdge(phrase, words[1], weight * 1.2);
-            }
-          }
-
-          decayGraph(0.997);
-          updateMindmap();
+        // For final sentences, use AI to extract theme
+        if (isFinal && text.length > 20) {
+          await processWithAI(text);
+        } else if (text.length > 20) {
+          // For interim results, skip AI processing to save API calls
+          return;
         }
 
         if (isFinal) {
@@ -730,7 +704,7 @@
           segments.push({
             id: crypto.randomUUID(),
             text,
-            tokens,
+            tokens: tokenize(text),
             createdAt: timestamp.toISOString(),
           });
           recentTranscripts.push(text);
@@ -739,8 +713,79 @@
           }
           appendSegment(text, timestamp);
 
-          // Trigger AI analysis
+          // Keep bulk analysis for summary display
           await analyzeWithGroq();
+        }
+      }
+
+      async function processWithAI(sentence) {
+        try {
+          updateAIStatus("Extracting theme...", false);
+
+          // Step 1: Extract theme from sentence
+          const themeResponse = await fetch(
+            "http://localhost:3001/api/extract-theme",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                sentence,
+                model: modelSelect.value,
+              }),
+            }
+          );
+
+          if (!themeResponse.ok) throw new Error("Theme extraction failed");
+          const { theme } = await themeResponse.json();
+
+          if (!theme) return;
+
+          // Step 2: Get existing nodes
+          const existingNodes = cy.nodes().map((n) => n.data("label"));
+
+          // Step 3: Find connections to existing nodes
+          updateAIStatus("Finding connections...", false);
+          const connectionsResponse = await fetch(
+            "http://localhost:3001/api/find-connections",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                newNode: theme,
+                existingNodes,
+                model: modelSelect.value,
+              }),
+            }
+          );
+
+          let connections = [];
+          if (connectionsResponse.ok) {
+            const { connections: conns } = await connectionsResponse.json();
+            connections = conns || [];
+          }
+
+          // Step 4: Add the new node with weight based on connections
+          const baseWeight = 5;
+          const connectionBonus = connections.length * 2;
+          const nodeWeight = baseWeight + connectionBonus;
+
+          addNode(theme, theme, nodeWeight);
+
+          // Step 5: Add connections to existing nodes
+          for (const conn of connections) {
+            addEdge(theme, conn.node, conn.strength * 10);
+          }
+
+          decayGraph(0.998);
+          updateMindmap();
+
+          updateAIStatus(
+            `Added: "${theme}" (${connections.length} connections)`,
+            true
+          );
+        } catch (error) {
+          console.error("AI processing error:", error);
+          updateAIStatus("AI processing failed", false, error.message);
         }
       }
 
@@ -757,7 +802,7 @@
           const model = modelSelect.value;
 
           // Call backend API instead of Groq directly
-          const response = await fetch("/api/analyze", {
+          const response = await fetch("http://localhost:3001/api/analyze", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

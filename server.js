@@ -4,14 +4,143 @@ const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.static('.')); // Serve static files (index.html)
 
-// Groq API endpoint
+// New endpoint: Extract theme/node from a single sentence
+app.post('/api/extract-theme', async (req, res) => {
+  try {
+    const { sentence, model, existingNodes } = req.body;
+    
+    const apiKey = process.env.GROQ_API_KEY;
+    
+    if (!apiKey) {
+      return res.status(400).json({ error: 'No Groq API key provided' });
+    }
+
+    if (!sentence || sentence.trim().length < 10) {
+      return res.status(400).json({ error: 'Sentence too short' });
+    }
+
+    const systemPrompt = `You are an expert at extracting the most important theme or concept from a sentence.
+    Your task:
+    1. Extract ONE main theme, concept, or idea from the sentence (maximum 6 words)
+    2. Return it as a single clear phrase or sentence fragment
+    
+    Examples:
+    Input: "I love programming in Python and making web applications"
+    Output: "Web development with Python"
+    
+    Input: "The meeting discussed the new marketing strategy for Q4"
+    Output: "Q4 marketing strategy"
+    
+    Return ONLY the theme/phrase, nothing else.`;
+
+    const response = await axios.post(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        model: model || 'llama-3.1-8b-instant',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: sentence }
+        ],
+        temperature: 0.3,
+        max_tokens: 50
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        }
+      }
+    );
+
+    const theme = response.data.choices[0]?.message?.content.trim();
+    
+    res.json({ 
+      success: true,
+      theme 
+    });
+
+  } catch (error) {
+    console.error('Theme extraction error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to extract theme',
+      message: error.message 
+    });
+  }
+});
+
+// Endpoint: Find connections between a new node and existing nodes
+app.post('/api/find-connections', async (req, res) => {
+  try {
+    const { newNode, existingNodes, model } = req.body;
+    
+    const apiKey = process.env.GROQ_API_KEY;
+    
+    if (!apiKey || !newNode || !existingNodes || existingNodes.length === 0) {
+      return res.json({ success: true, connections: [] });
+    }
+
+    const systemPrompt = `You are analyzing connections between concepts in a mind map.
+    Given a NEW node (theme) and a list of EXISTING nodes, determine which existing nodes are related to the new node.
+    
+    Return a JSON array of objects with:
+    - "node": the existing node name
+    - "strength": a number 0.1 to 1.0 indicating connection strength
+    - "reason": brief explanation (one word or short phrase)
+    
+    Only include connections with strength >= 0.3.`;
+
+    const userPrompt = `New node: "${newNode}"
+    
+Existing nodes:
+${existingNodes.map((n, i) => `${i + 1}. ${n}`).join('\n')}
+
+Return JSON array of connections.`;
+
+    const response = await axios.post(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        model: model || 'llama-3.1-8b-instant',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.3,
+        max_tokens: 500
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        }
+      }
+    );
+
+    const content = response.data.choices[0]?.message?.content;
+    const jsonMatch = content.match(/\[[\s\S]*\]/);
+    const connections = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+
+    res.json({ 
+      success: true,
+      connections 
+    });
+
+  } catch (error) {
+    console.error('Connection finding error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to find connections',
+      message: error.message 
+    });
+  }
+});
+
+// Original endpoint: Bulk analysis (kept for backward compatibility)
 app.post('/api/analyze', async (req, res) => {
   try {
     const { transcripts, model } = req.body;
