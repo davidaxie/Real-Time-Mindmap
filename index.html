@@ -1,9 +1,9 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Realtime Mindmap</title>
+    <title>AI-Powered Realtime Mindmap</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -13,7 +13,8 @@
     <style>
       :root {
         color-scheme: light;
-        font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
+          sans-serif;
         background: #f7f4ef;
         color: #1f2933;
       }
@@ -22,9 +23,16 @@
         min-height: 100vh;
         display: flex;
         flex-direction: column;
-        background:
-          radial-gradient(circle at top left, rgba(226, 232, 240, 0.6), transparent 55%),
-          radial-gradient(circle at bottom right, rgba(244, 219, 216, 0.55), transparent 50%),
+        background: radial-gradient(
+            circle at top left,
+            rgba(226, 232, 240, 0.6),
+            transparent 55%
+          ),
+          radial-gradient(
+            circle at bottom right,
+            rgba(244, 219, 216, 0.55),
+            transparent 50%
+          ),
           #f7f4ef;
       }
       header {
@@ -91,7 +99,8 @@
         cursor: pointer;
         color: #312e81;
         background: linear-gradient(135deg, #ede9fe, #e0e7ff);
-        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        transition: transform 0.2s ease, box-shadow 0.2s ease,
+          border-color 0.2s ease;
         box-shadow: 0 8px 18px rgba(129, 140, 248, 0.2);
       }
       button.secondary {
@@ -158,7 +167,8 @@
         color: rgba(107, 114, 128, 0.85);
       }
       .control-grid select,
-      .control-grid input[type='range'] {
+      .control-grid input[type="text"],
+      .control-grid input[type="range"] {
         width: 100%;
         padding: 0.55rem 0.7rem;
         border-radius: 12px;
@@ -269,6 +279,10 @@
         background: rgba(254, 226, 226, 0.85);
         color: #b91c1c;
       }
+      .metric-pill.success {
+        background: rgba(220, 252, 231, 0.85);
+        color: #15803d;
+      }
       .status-stack {
         display: flex;
         flex-direction: column;
@@ -276,6 +290,10 @@
       }
       .status-stack small {
         color: rgba(75, 85, 99, 0.7);
+      }
+      .api-key-input {
+        font-size: 0.85rem !important;
+        font-family: monospace;
       }
       @media (max-width: 768px) {
         header {
@@ -293,23 +311,52 @@
   </head>
   <body>
     <header>
-      <h1>Realtime Mindmap</h1>
+      <h1>AI-Powered Realtime Mindmap</h1>
       <p>
-        Capture discussions, lectures, and meetings as they happen. Speech is transcribed
-        live, distilled into key topics, translated as needed, and visualised as an
-        evolving mindmap so you can spot themes, action items, and emerging ideas
-        instantly.
+        Capture discussions, lectures, and meetings as they happen. Speech is
+        transcribed live, analyzed by AI to extract key concepts and themes, and
+        visualised as an evolving mindmap so you can spot themes, action items,
+        and emerging ideas instantly.
       </p>
     </header>
     <main>
+      <section>
+        <h2>Configuration</h2>
+        <div class="section-body">
+          <div class="control-grid">
+            <div>
+              <label for="model-select">Groq Model</label>
+              <select id="model-select">
+                <option value="llama-3.1-8b-instant">
+                  Llama 3.1 8B Instant
+                </option>
+                <option value="llama-3.1-70b-versatile">
+                  Llama 3.1 70B Versatile
+                </option>
+                <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+                <option value="gemma2-9b-it">Gemma 2 9B</option>
+              </select>
+            </div>
+          </div>
+          <p class="hint">
+            The API key is securely stored on the backend. Select your preferred
+            AI model.
+          </p>
+        </div>
+      </section>
+
       <section>
         <h2>Capture Controls</h2>
         <div class="section-body">
           <div id="controls">
             <button id="start-btn">Start Listening</button>
             <button id="pause-btn" class="secondary" disabled>Pause</button>
-            <button id="stop-btn" class="danger" disabled>Stop &amp; Reset</button>
-            <button id="export-btn" class="secondary" disabled>Export JSON</button>
+            <button id="stop-btn" class="danger" disabled>
+              Stop &amp; Reset
+            </button>
+            <button id="export-btn" class="secondary" disabled>
+              Export JSON
+            </button>
           </div>
           <div class="status-line">
             <span id="status-indicator" class="status-indicator"></span>
@@ -329,9 +376,8 @@
             </div>
           </div>
           <p class="hint">
-            The recogniser keeps a rolling buffer so it can revise partial phrases when a
-            speaker keeps talking. Pause when silence exceeds a few seconds to help the
-            latency policy stay responsive.
+            The recogniser keeps a rolling buffer. Pause when silence exceeds a
+            few seconds to help with processing.
           </p>
         </div>
       </section>
@@ -345,43 +391,33 @@
       </section>
 
       <section>
-        <h2>Realtime Translation</h2>
+        <h2>AI Analysis</h2>
         <div class="section-body">
-          <div class="control-grid">
-            <div>
-              <label for="target-lang">Target language</label>
-              <select id="target-lang"></select>
-            </div>
-            <div>
-              <label for="wait-policy">Latency policy (wait-k tokens)</label>
-              <input id="wait-policy" type="range" min="1" max="8" step="1" value="3" />
-              <div class="range-value">Start translating after <span id="wait-label">3</span> tokens</div>
-            </div>
-            <div>
-              <label for="stabilization-window">Stabilisation window (ms)</label>
-              <input
-                id="stabilization-window"
-                type="range"
-                min="200"
-                max="1200"
-                step="50"
-                value="500"
-              />
-              <div class="range-value">
-                Hold partials for <span id="stabilization-label">500</span> ms before committing
-              </div>
-            </div>
+          <div class="status-stack" id="ai-status">
+            <div class="metric-pill">Ready</div>
+            <small
+              >AI will analyze your speech to extract key concepts and
+              themes.</small
+            >
           </div>
-          <div class="status-stack" id="translation-status">
-            <div class="metric-pill">Queue idle</div>
-            <small>Latency target ≈ 0.6–1.5s depending on language pair and settings.</small>
+          <div
+            id="ai-output"
+            style="
+              min-height: 80px;
+              padding: 1rem;
+              border-radius: 12px;
+              background: rgba(249, 250, 251, 0.9);
+              border: 1px solid rgba(209, 213, 219, 0.7);
+              line-height: 1.7;
+              color: #1f2937;
+            "
+          >
+            AI insights will appear here...
           </div>
-          <div id="translation-live">Translation will appear here once speech begins…</div>
-          <div id="translation-history"></div>
         </div>
       </section>
 
-      <section style="grid-column: 1 / -1; min-height: 640px;">
+      <section style="grid-column: 1 / -1; min-height: 640px">
         <h2>Mindmap</h2>
         <div id="cy"></div>
       </section>
@@ -389,338 +425,173 @@
       <section>
         <h2>Focus Panel</h2>
         <div class="section-body" id="details">
-          <p>Select a node in the mindmap to see the most recent notes and quotes linked to it.</p>
+          <p>
+            Select a node in the mindmap to see the most recent notes and quotes
+            linked to it.
+          </p>
         </div>
       </section>
     </main>
 
     <script>
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
 
-      const statusIndicator = document.getElementById('status-indicator');
-      const statusText = document.getElementById('status-text');
-      const startBtn = document.getElementById('start-btn');
-      const pauseBtn = document.getElementById('pause-btn');
-      const stopBtn = document.getElementById('stop-btn');
-      const exportBtn = document.getElementById('export-btn');
-      const liveTranscript = document.getElementById('live-transcript');
-      const transcriptLog = document.getElementById('transcript-log');
-      const noteInput = document.getElementById('note-input');
-      const detailsPanel = document.getElementById('details');
-      const sourceLangSelect = document.getElementById('source-lang');
-      const targetLangSelect = document.getElementById('target-lang');
-      const waitPolicyInput = document.getElementById('wait-policy');
-      const waitLabel = document.getElementById('wait-label');
-      const stabilizationInput = document.getElementById('stabilization-window');
-      const stabilizationLabel = document.getElementById('stabilization-label');
-      const translationStatus = document.getElementById('translation-status');
-      const translationLive = document.getElementById('translation-live');
-      const translationHistoryList = document.getElementById('translation-history');
+      const statusIndicator = document.getElementById("status-indicator");
+      const statusText = document.getElementById("status-text");
+      const startBtn = document.getElementById("start-btn");
+      const pauseBtn = document.getElementById("pause-btn");
+      const stopBtn = document.getElementById("stop-btn");
+      const exportBtn = document.getElementById("export-btn");
+      const liveTranscript = document.getElementById("live-transcript");
+      const transcriptLog = document.getElementById("transcript-log");
+      const noteInput = document.getElementById("note-input");
+      const detailsPanel = document.getElementById("details");
+      const sourceLangSelect = document.getElementById("source-lang");
+      const modelSelect = document.getElementById("model-select");
+      const aiOutput = document.getElementById("ai-output");
+      const aiStatus = document.getElementById("ai-status");
 
       const STOPWORDS = new Set([
-        'the', 'a', 'an', 'and', 'or', 'of', 'to', 'in', 'for', 'on', 'with', 'at', 'by', 'is', 'are', 'be',
-        'we', 'you', 'i', 'it', 'that', 'this', 'as', 'our', 'your', 'from', 'about', 'was', 'were', 'have',
-        'has', 'had', 'will', 'would', 'can', 'could', 'should', 'they', 'them', 'their', 'but', 'if', 'not', 'so'
+        "the",
+        "a",
+        "an",
+        "and",
+        "or",
+        "of",
+        "to",
+        "in",
+        "for",
+        "on",
+        "with",
+        "at",
+        "by",
+        "is",
+        "are",
+        "be",
+        "we",
+        "you",
+        "i",
+        "it",
+        "that",
+        "this",
+        "as",
+        "our",
+        "your",
+        "from",
+        "about",
+        "was",
+        "were",
+        "have",
+        "has",
+        "had",
+        "will",
+        "would",
+        "can",
+        "could",
+        "should",
+        "they",
+        "them",
+        "their",
+        "but",
+        "if",
+        "not",
+        "so",
       ]);
 
       const LANGUAGE_OPTIONS = [
-        { code: 'auto', label: 'Auto detect' },
-        { code: 'en-US', label: 'English (United States)' },
-        { code: 'en-GB', label: 'English (United Kingdom)' },
-        { code: 'es-ES', label: 'Spanish' },
-        { code: 'fr-FR', label: 'French' },
-        { code: 'de-DE', label: 'German' },
-        { code: 'pt-BR', label: 'Portuguese (Brazil)' },
-        { code: 'it-IT', label: 'Italian' },
-        { code: 'hi-IN', label: 'Hindi' },
-        { code: 'ja-JP', label: 'Japanese' },
-        { code: 'zh-CN', label: 'Chinese (Mandarin)' }
-      ];
-
-      const TARGET_LANGUAGE_OPTIONS = [
-        { code: 'en', label: 'English' },
-        { code: 'es', label: 'Spanish' },
-        { code: 'fr', label: 'French' },
-        { code: 'de', label: 'German' },
-        { code: 'pt', label: 'Portuguese' },
-        { code: 'it', label: 'Italian' },
-        { code: 'hi', label: 'Hindi' },
-        { code: 'ja', label: 'Japanese' },
-        { code: 'zh', label: 'Chinese (Simplified)' }
+        { code: "auto", label: "Auto detect" },
+        { code: "en-US", label: "English (United States)" },
+        { code: "en-GB", label: "English (United Kingdom)" },
+        { code: "es-ES", label: "Spanish" },
+        { code: "fr-FR", label: "French" },
+        { code: "de-DE", label: "German" },
+        { code: "pt-BR", label: "Portuguese (Brazil)" },
+        { code: "it-IT", label: "Italian" },
+        { code: "hi-IN", label: "Hindi" },
+        { code: "ja-JP", label: "Japanese" },
+        { code: "zh-CN", label: "Chinese (Mandarin)" },
       ];
 
       const graph = {
         nodes: new Map(),
-        edges: new Map()
+        edges: new Map(),
       };
 
       const segments = [];
+      const recentTranscripts = [];
+      const maxTranscriptBuffer = 10;
       let cy;
       let recognition;
       let isPaused = false;
       let isCapturing = false;
       let allowAutoRestart = false;
+      let aiAnalysisPending = false;
+      let aiAnalysisQueue = [];
 
-      class TranslationPipeline {
-        constructor(translator, options = {}) {
-          this.translator = translator;
-          this.waitTokens = options.waitTokens ?? 3;
-          this.stabilizationMs = options.stabilizationMs ?? 500;
-          this.sourceLang = options.sourceLang ?? 'auto';
-          this.targetLang = options.targetLang ?? 'es';
-          this.confirmedTokens = [];
-          this.partialTokens = [];
-          this.partialUpdatedAt = 0;
-          this.pendingCount = 0;
-          this.translatedTokenCount = 0;
-          this.queue = [];
-          this.history = [];
-          this.processing = false;
-          this.lastLatency = null;
-          this.error = null;
-          this.onUpdate = () => {};
-        }
-
-        setCallbacks(onUpdate) {
-          this.onUpdate = onUpdate;
-          this.emit();
-        }
-
-        setSourceLang(lang) {
-          this.sourceLang = lang;
-        }
-
-        setTargetLang(lang) {
-          this.targetLang = lang;
-        }
-
-        setPolicy({ waitTokens, stabilizationMs }) {
-          this.waitTokens = waitTokens;
-          this.stabilizationMs = stabilizationMs;
-          this.emit();
-        }
-
-        handlePartial(text) {
-          this.partialTokens = this.tokenize(text);
-          this.partialUpdatedAt = performance.now();
-          this.emit();
-          this.maybeDispatch();
-        }
-
-        handleFinal(text) {
-          const newTokens = this.tokenize(text);
-          if (newTokens.length) {
-            this.confirmedTokens.push(...newTokens);
-          }
-          this.partialTokens = [];
-          this.emit();
-          this.maybeDispatch(true);
-        }
-
-        flush() {
-          if (this.partialTokens.length) {
-            this.confirmedTokens.push(...this.partialTokens);
-            this.partialTokens = [];
-          }
-          this.maybeDispatch(true);
-        }
-
-        reset() {
-          this.confirmedTokens = [];
-          this.partialTokens = [];
-          this.partialUpdatedAt = 0;
-          this.pendingCount = 0;
-          this.translatedTokenCount = 0;
-          this.queue = [];
-          this.history = [];
-          this.processing = false;
-          this.lastLatency = null;
-          this.error = null;
-          this.emit();
-        }
-
-        getHistory() {
-          return this.history.slice();
-        }
-
-        tokenize(text) {
-          return (text.toLowerCase().match(/[a-z0-9'\-]+|[.,!?]/g) || []).filter(Boolean);
-        }
-
-        maybeDispatch(force = false) {
-          const totalTokens = this.confirmedTokens.concat(this.partialTokens);
-          const locked = this.translatedTokenCount + this.pendingCount;
-          const readyCount = Math.max(totalTokens.length - locked, 0);
-          if (readyCount <= 0) {
-            this.emit();
-            return;
-          }
-
-          const now = performance.now();
-          const partialAge = now - this.partialUpdatedAt;
-          const hasPartial = this.partialTokens.length > 0;
-
-          let shouldSend = force;
-          if (!shouldSend) {
-            if (readyCount >= this.waitTokens) {
-              shouldSend = true;
-            } else if (hasPartial && partialAge >= this.stabilizationMs) {
-              shouldSend = true;
-            }
-          }
-
-          if (!shouldSend) {
-            this.emit();
-            return;
-          }
-
-          const sendCount = force ? readyCount : Math.min(readyCount, Math.max(this.waitTokens, 1));
-          const startIndex = locked;
-          const tokensToSend = totalTokens.slice(startIndex, startIndex + sendCount);
-          const sourceText = tokensToSend.join(' ');
-          if (!sourceText.trim()) {
-            this.emit();
-            return;
-          }
-
-          this.queue.push({
-            text: sourceText,
-            count: tokensToSend.length,
-            requestedAt: performance.now()
-          });
-          this.pendingCount += tokensToSend.length;
-          this.emit();
-          this.processQueue();
-        }
-
-        async processQueue() {
-          if (this.processing || !this.queue.length) {
-            return;
-          }
-          this.processing = true;
-          const job = this.queue[0];
-          try {
-            const start = performance.now();
-            const translation = await this.translator(job.text, this.targetLang, this.sourceLang);
-            const latency = performance.now() - start;
-            this.history.push({
-              id: crypto.randomUUID(),
-              sourceText: job.text,
-              translation,
-              timestamp: Date.now(),
-              latency,
-              tokenCount: job.count
-            });
-            this.translatedTokenCount += job.count;
-            this.lastLatency = latency;
-            this.error = null;
-            this.queue.shift();
-            this.pendingCount -= job.count;
-          } catch (err) {
-            console.error('Translation error', err);
-            this.error = err instanceof Error ? err.message : String(err);
-            this.pendingCount -= job.count;
-            this.queue.shift();
-          } finally {
-            this.processing = false;
-            this.emit();
-            if (this.queue.length) {
-              this.processQueue();
-            }
-          }
-        }
-
-        buildState() {
-          const totalTokens = this.confirmedTokens.concat(this.partialTokens);
-          const previewCount = Math.max(totalTokens.length - this.translatedTokenCount, 0);
-          const committedText = this.history.map(entry => entry.translation).join(' ').trim();
-          const previewText = previewCount > 0 ? `${committedText} …` : committedText;
-          return {
-            committedText,
-            previewText,
-            queueLength: this.queue.length + (this.processing ? 1 : 0),
-            pendingTokens: previewCount,
-            lastLatency: this.lastLatency,
-            history: this.history.slice(-40),
-            error: this.error
-          };
-        }
-
-        emit() {
-          if (typeof this.onUpdate === 'function') {
-            this.onUpdate(this.buildState());
-          }
-        }
-      }
-
-      const translationPipeline = new TranslationPipeline(translateText, {
-        waitTokens: Number(waitPolicyInput.value),
-        stabilizationMs: Number(stabilizationInput.value),
-        targetLang: 'es',
-        sourceLang: navigator.language || 'en-US'
-      });
-
-      translationPipeline.setCallbacks(updateTranslationUI);
+      // Backend API is now handling the API key securely
 
       function initCytoscape() {
         cy = cytoscape({
-          container: document.getElementById('cy'),
+          container: document.getElementById("cy"),
           elements: [],
-          layout: { name: 'cose', animate: true, padding: 40 },
+          layout: { name: "cose", animate: true, padding: 40 },
           style: [
             {
-              selector: 'node',
+              selector: "node",
               style: {
-                label: 'data(label)',
-                'text-valign': 'center',
-                'font-size': 'mapData(weight, 0, 40, 10, 28)',
-                color: '#1f2937',
-                'background-color': 'mapData(weight, 0, 40, #c7d2fe, #fbbf24)',
-                width: 'mapData(weight, 0, 40, 26, 100)',
-                height: 'mapData(weight, 0, 40, 26, 100)',
-                'text-outline-width': 1,
-                'text-outline-color': '#f8fafc',
-                'background-opacity': 0.95,
-                'border-color': '#a5b4fc',
-                'border-width': 'mapData(weight, 0, 40, 2, 6)'
-              }
+                label: "data(label)",
+                "text-valign": "center",
+                "font-size": "mapData(weight, 0, 40, 10, 28)",
+                color: "#1f2937",
+                "background-color": "mapData(weight, 0, 40, #c7d2fe, #fbbf24)",
+                width: "mapData(weight, 0, 40, 26, 100)",
+                height: "mapData(weight, 0, 40, 26, 100)",
+                "text-outline-width": 1,
+                "text-outline-color": "#f8fafc",
+                "background-opacity": 0.95,
+                "border-color": "#a5b4fc",
+                "border-width": "mapData(weight, 0, 40, 2, 6)",
+              },
             },
             {
-              selector: 'edge',
+              selector: "edge",
               style: {
-                'curve-style': 'unbundled-bezier',
-                'line-color': 'rgba(148, 163, 184, 0.55)',
-                'target-arrow-color': 'rgba(148, 163, 184, 0.55)',
-                width: 'mapData(weight, 0, 30, 1, 9)',
-                opacity: 0.65
-              }
-            }
-          ]
+                "curve-style": "unbundled-bezier",
+                "line-color": "rgba(148, 163, 184, 0.55)",
+                "target-arrow-color": "rgba(148, 163, 184, 0.55)",
+                width: "mapData(weight, 0, 30, 1, 9)",
+                opacity: 0.65,
+              },
+            },
+          ],
         });
 
-        cy.on('tap', 'node', evt => {
+        cy.on("tap", "node", (evt) => {
           const node = evt.target.data();
           showNodeDetails(node.id);
         });
       }
 
       function populateSelect(select, options, preferred) {
-        select.innerHTML = '';
-        options.forEach(option => {
-          const opt = document.createElement('option');
+        select.innerHTML = "";
+        options.forEach((option) => {
+          const opt = document.createElement("option");
           opt.value = option.code;
           opt.textContent = option.label;
           select.appendChild(opt);
         });
-        if (preferred && options.some(opt => opt.code === preferred)) {
+        if (preferred && options.some((opt) => opt.code === preferred)) {
           select.value = preferred;
         }
       }
 
       function tokenize(text) {
-        return (text.toLowerCase().match(/[a-z0-9'\-]+/g) || []).filter(token => {
-          return token.length > 2 && !STOPWORDS.has(token);
-        });
+        return (text.toLowerCase().match(/[a-z0-9'\-]+/g) || []).filter(
+          (token) => {
+            return token.length > 2 && !STOPWORDS.has(token);
+          }
+        );
       }
 
       function decayGraph(factor = 0.995) {
@@ -753,22 +624,22 @@
         graph.edges.get(id).weight += increment;
       }
 
-      function processTranscript(text, isFinal) {
+      async function processTranscript(text, isFinal) {
         if (!text.trim()) return;
 
+        // Simple token-based processing for immediate feedback
         const tokens = tokenize(text);
-        if (!tokens.length) return;
-
-        const weight = isFinal ? 1 : 0.4;
-        for (const token of tokens) {
-          addNode(token, token, weight);
+        if (tokens.length) {
+          const weight = isFinal ? 1 : 0.4;
+          for (const token of tokens) {
+            addNode(token, token, weight);
+          }
+          for (let i = 0; i < tokens.length - 1; i++) {
+            addEdge(tokens[i], tokens[i + 1], weight * 0.8);
+          }
+          decayGraph(0.997);
+          updateMindmap();
         }
-        for (let i = 0; i < tokens.length - 1; i++) {
-          addEdge(tokens[i], tokens[i + 1], weight * 0.8);
-        }
-
-        decayGraph(0.997);
-        updateMindmap();
 
         if (isFinal) {
           const timestamp = new Date();
@@ -776,22 +647,141 @@
             id: crypto.randomUUID(),
             text,
             tokens,
-            createdAt: timestamp.toISOString()
+            createdAt: timestamp.toISOString(),
           });
+          recentTranscripts.push(text);
+          if (recentTranscripts.length > maxTranscriptBuffer) {
+            recentTranscripts.shift();
+          }
           appendSegment(text, timestamp);
+
+          // Trigger AI analysis
+          await analyzeWithGroq();
+        }
+      }
+
+      async function analyzeWithGroq() {
+        if (aiAnalysisPending) return;
+
+        const transcriptsToAnalyze = recentTranscripts.slice(-3).join(" ");
+        if (transcriptsToAnalyze.length < 50) return; // Wait for more content
+
+        aiAnalysisPending = true;
+        updateAIStatus("Analyzing...", false);
+
+        try {
+          const model = modelSelect.value;
+
+          // Call backend API instead of Groq directly
+          const response = await fetch("/api/analyze", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              transcripts: transcriptsToAnalyze,
+              model: model,
+            }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(
+              errorData.message || `API error: ${response.status}`
+            );
+          }
+
+          const data = await response.json();
+          const analysis = data.analysis;
+
+          if (analysis) {
+            processAIAnalysis(analysis);
+            updateAIStatus("Analysis complete", true);
+            displayAISummary(analysis);
+          }
+        } catch (error) {
+          console.error("AI Analysis error:", error);
+          updateAIStatus("Analysis failed", false, error.message);
+        } finally {
+          aiAnalysisPending = false;
+        }
+      }
+
+      function processAIAnalysis(analysis) {
+        // Add concepts as nodes
+        if (analysis.concepts) {
+          analysis.concepts.forEach((concept) => {
+            const normalizedConcept = concept.toLowerCase().trim();
+            addNode(normalizedConcept, concept, 5); // Higher weight for AI-extracted concepts
+          });
+        }
+
+        // Add relationships as edges
+        if (analysis.relationships) {
+          analysis.relationships.forEach((rel) => {
+            const source = rel.source?.toLowerCase().trim();
+            const target = rel.target?.toLowerCase().trim();
+            const strength = Math.min(rel.strength || 1, 10);
+            if (source && target) {
+              addEdge(source, target, strength);
+            }
+          });
+        }
+
+        updateMindmap();
+      }
+
+      function displayAISummary(analysis) {
+        let summaryHTML = "";
+
+        if (analysis.summary) {
+          summaryHTML += `<p><strong>Summary:</strong> ${analysis.summary}</p>`;
+        }
+
+        if (analysis.themes && analysis.themes.length > 0) {
+          summaryHTML += `<p><strong>Themes:</strong> ${analysis.themes.join(
+            ", "
+          )}</p>`;
+        }
+
+        if (analysis.concepts && analysis.concepts.length > 0) {
+          summaryHTML += `<p><strong>Key Concepts:</strong> ${analysis.concepts
+            .slice(0, 10)
+            .join(", ")}</p>`;
+        }
+
+        aiOutput.innerHTML = summaryHTML || "<p>Analysis complete.</p>";
+      }
+
+      function updateAIStatus(message, success = false, error = null) {
+        aiStatus.innerHTML = "";
+        const pill = document.createElement("div");
+        pill.className = success
+          ? "metric-pill success"
+          : error
+          ? "metric-pill danger"
+          : "metric-pill";
+        pill.textContent = message;
+        aiStatus.appendChild(pill);
+
+        if (error) {
+          const errorText = document.createElement("small");
+          errorText.textContent = error;
+          errorText.style.color = "#b91c1c";
+          aiStatus.appendChild(errorText);
         }
       }
 
       function appendSegment(text, timestamp) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'segment';
-        const timeEl = document.createElement('time');
+        const wrapper = document.createElement("div");
+        wrapper.className = "segment";
+        const timeEl = document.createElement("time");
         timeEl.textContent = new Intl.DateTimeFormat([], {
-          hour: 'numeric',
-          minute: '2-digit',
-          second: '2-digit'
+          hour: "numeric",
+          minute: "2-digit",
+          second: "2-digit",
         }).format(new Date(timestamp));
-        const textEl = document.createElement('p');
+        const textEl = document.createElement("p");
         textEl.textContent = text;
         wrapper.appendChild(timeEl);
         wrapper.appendChild(textEl);
@@ -804,41 +794,47 @@
         const nodes = Array.from(graph.nodes.values())
           .sort((a, b) => b.weight - a.weight)
           .slice(0, maxNodes);
-        const nodeSet = new Set(nodes.map(n => n.id));
+        const nodeSet = new Set(nodes.map((n) => n.id));
         const edges = Array.from(graph.edges.values()).filter(
-          e => nodeSet.has(e.source) && nodeSet.has(e.target)
+          (e) => nodeSet.has(e.source) && nodeSet.has(e.target)
         );
 
         cy.startBatch();
         cy.elements().remove();
-        cy.add(nodes.map(n => ({ data: n })));
-        cy.add(edges.map(e => ({ data: e })));
-        cy.layout({ name: 'cose', animate: true, randomize: false, padding: 40 }).run();
+        cy.add(nodes.map((n) => ({ data: n })));
+        cy.add(edges.map((e) => ({ data: e })));
+        cy.layout({
+          name: "cose",
+          animate: true,
+          randomize: false,
+          padding: 40,
+        }).run();
         cy.endBatch();
       }
 
       function showNodeDetails(nodeId) {
         const relatedSegments = segments
-          .filter(seg => seg.tokens.includes(nodeId))
+          .filter((seg) => seg.tokens.includes(nodeId))
           .slice(-6)
           .reverse();
 
-        detailsPanel.innerHTML = '';
+        detailsPanel.innerHTML = "";
         if (!relatedSegments.length) {
-          detailsPanel.innerHTML = '<p>No captured quotes linked to this topic yet.</p>';
+          detailsPanel.innerHTML =
+            "<p>No captured quotes linked to this topic yet.</p>";
           return;
         }
 
         for (const seg of relatedSegments) {
-          const item = document.createElement('div');
-          item.className = 'detail-item';
-          const time = document.createElement('time');
+          const item = document.createElement("div");
+          item.className = "detail-item";
+          const time = document.createElement("time");
           time.textContent = new Intl.DateTimeFormat([], {
-            hour: 'numeric',
-            minute: '2-digit',
-            second: '2-digit'
+            hour: "numeric",
+            minute: "2-digit",
+            second: "2-digit",
           }).format(new Date(seg.createdAt));
-          const text = document.createElement('p');
+          const text = document.createElement("p");
           text.textContent = seg.text;
           item.appendChild(time);
           item.appendChild(text);
@@ -846,119 +842,27 @@
         }
       }
 
-      function updateTranslationUI(state) {
-        translationLive.textContent = state.previewText || 'Waiting for translation…';
-
-        translationStatus.innerHTML = '';
-        const metrics = document.createElement('div');
-        metrics.className = 'status-line';
-        metrics.appendChild(createMetric(`Queue ${state.queueLength}`));
-        metrics.appendChild(createMetric(`${state.pendingTokens} tokens pending`));
-        if (typeof state.lastLatency === 'number') {
-          metrics.appendChild(createMetric(`Last chunk ${formatLatency(state.lastLatency)}`));
-        }
-        translationStatus.appendChild(metrics);
-        const helper = document.createElement('small');
-        helper.textContent = 'Adjust the wait-k and stabilisation window sliders to balance latency and translation quality.';
-        translationStatus.appendChild(helper);
-        if (state.error) {
-          const errorPill = createMetric(state.error, true);
-          translationStatus.appendChild(errorPill);
-        }
-
-        renderTranslationHistory(state.history);
-      }
-
-      function renderTranslationHistory(history) {
-        translationHistoryList.innerHTML = '';
-        history.slice().reverse().forEach(item => {
-          const wrapper = document.createElement('div');
-          wrapper.className = 'translation-item';
-          const time = document.createElement('time');
-          time.textContent = new Intl.DateTimeFormat([], {
-            hour: 'numeric',
-            minute: '2-digit',
-            second: '2-digit'
-          }).format(new Date(item.timestamp));
-          const source = document.createElement('p');
-          source.textContent = `🗣️ ${item.sourceText}`;
-          const target = document.createElement('p');
-          target.textContent = `🌐 ${item.translation}`;
-          const meta = document.createElement('div');
-          meta.className = 'meta';
-          meta.textContent = `${item.tokenCount} tokens • ${formatLatency(item.latency)} latency`;
-          wrapper.appendChild(time);
-          wrapper.appendChild(source);
-          wrapper.appendChild(target);
-          wrapper.appendChild(meta);
-          translationHistoryList.appendChild(wrapper);
-        });
-      }
-
-      function createMetric(text, danger = false) {
-        const pill = document.createElement('span');
-        pill.className = danger ? 'metric-pill danger' : 'metric-pill';
-        pill.textContent = text;
-        return pill;
-      }
-
-      function formatLatency(ms) {
-        return `${ms.toFixed(0)} ms`;
-      }
-
-      function translateText(text, targetLang, sourceLang) {
-        const endpoint = 'https://libretranslate.de/translate';
-        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-        const timeout = controller ? setTimeout(() => controller.abort(), 8000) : null;
-        return fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            q: text,
-            source: sourceLang === 'auto' ? 'auto' : sourceLang.split('-')[0],
-            target: targetLang,
-            format: 'text'
-          }),
-          signal: controller ? controller.signal : undefined
-        })
-          .then(response => {
-            if (!response.ok) {
-              throw new Error(`Translation HTTP ${response.status}`);
-            }
-            return response.json();
-          })
-          .then(data => data.translatedText || '')
-          .catch(err => {
-            console.warn('Falling back to pass-through translation', err);
-            return text;
-          })
-          .finally(() => {
-            if (timeout) clearTimeout(timeout);
-          });
-      }
-
       function resetSession() {
         graph.nodes.clear();
         graph.edges.clear();
         segments.length = 0;
-        transcriptLog.innerHTML = '';
-        detailsPanel.innerHTML = '<p>Select a node in the mindmap to see the most recent notes and quotes linked to it.</p>';
-        liveTranscript.textContent = 'Waiting for speech…';
-        translationLive.textContent = 'Translation will appear here once speech begins…';
-        translationHistoryList.innerHTML = '';
-        translationPipeline.reset();
+        recentTranscripts.length = 0;
+        transcriptLog.innerHTML = "";
+        detailsPanel.innerHTML =
+          "<p>Select a node in the mindmap to see the most recent notes and quotes linked to it.</p>";
+        liveTranscript.textContent = "Waiting for speech…";
+        aiOutput.textContent = "AI insights will appear here...";
+        updateAIStatus("Ready", false);
         updateMindmap();
         startBtn.disabled = false;
         pauseBtn.disabled = true;
         stopBtn.disabled = true;
         exportBtn.disabled = true;
-        pauseBtn.textContent = 'Pause';
+        pauseBtn.textContent = "Pause";
         isCapturing = false;
         isPaused = false;
         allowAutoRestart = false;
-        setStatus('Idle • microphone permissions required', false);
+        setStatus("Idle • microphone permissions required", false);
       }
 
       function exportSession() {
@@ -967,11 +871,12 @@
           segments,
           nodes: Array.from(graph.nodes.values()),
           edges: Array.from(graph.edges.values()),
-          translations: translationPipeline.getHistory()
         };
-        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const blob = new Blob([JSON.stringify(payload, null, 2)], {
+          type: "application/json",
+        });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = url;
         a.download = `mindmap-${Date.now()}.json`;
         a.click();
@@ -980,12 +885,15 @@
 
       function setStatus(text, active) {
         statusText.textContent = text;
-        statusIndicator.classList.toggle('active', active);
+        statusIndicator.classList.toggle("active", active);
       }
 
       function setupRecognition() {
         if (!SpeechRecognition) {
-          setStatus('Speech recognition unavailable in this browser. Please use Chrome-based browsers.', false);
+          setStatus(
+            "Speech recognition unavailable in this browser. Please use Chrome-based browsers.",
+            false
+          );
           startBtn.disabled = true;
           return;
         }
@@ -993,32 +901,36 @@
         recognition = new SpeechRecognition();
         recognition.continuous = true;
         recognition.interimResults = true;
-        recognition.lang = sourceLangSelect.value === 'auto' ? navigator.language || 'en-US' : sourceLangSelect.value;
+        recognition.lang =
+          sourceLangSelect.value === "auto"
+            ? navigator.language || "en-US"
+            : sourceLangSelect.value;
 
-        recognition.onresult = event => {
-          let interimTranscript = '';
+        recognition.onresult = (event) => {
+          let interimTranscript = "";
           for (let i = event.resultIndex; i < event.results.length; ++i) {
             const result = event.results[i];
             const transcript = result[0].transcript.trim();
             if (!transcript) continue;
             if (result.isFinal) {
-              liveTranscript.textContent = '✔ ' + transcript;
+              liveTranscript.textContent = "✔ " + transcript;
               processTranscript(transcript, true);
-              translationPipeline.handleFinal(transcript);
             } else {
               interimTranscript = transcript;
-              liveTranscript.textContent = '… ' + transcript;
+              liveTranscript.textContent = "… " + transcript;
               processTranscript(transcript, false);
-              translationPipeline.handlePartial(transcript);
             }
           }
-          if (!interimTranscript && !event.results[event.results.length - 1]?.isFinal) {
-            liveTranscript.textContent = 'Listening…';
+          if (
+            !interimTranscript &&
+            !event.results[event.results.length - 1]?.isFinal
+          ) {
+            liveTranscript.textContent = "Listening…";
           }
         };
 
-        recognition.onerror = event => {
-          console.error('Speech recognition error', event.error);
+        recognition.onerror = (event) => {
+          console.error("Speech recognition error", event.error);
           setStatus(`Error: ${event.error}`, false);
           startBtn.disabled = false;
           pauseBtn.disabled = true;
@@ -1029,79 +941,87 @@
 
         recognition.onend = () => {
           if (isCapturing && !isPaused && allowAutoRestart) {
-            translationPipeline.flush();
-            setStatus('Restarting capture…', true);
+            setStatus("Restarting capture…", true);
             recognition.start();
           }
         };
       }
 
-      startBtn.addEventListener('click', () => {
+      startBtn.addEventListener("click", () => {
         if (!recognition) return;
-        recognition.lang = sourceLangSelect.value === 'auto' ? navigator.language || 'en-US' : sourceLangSelect.value;
+        recognition.lang =
+          sourceLangSelect.value === "auto"
+            ? navigator.language || "en-US"
+            : sourceLangSelect.value;
         allowAutoRestart = true;
         recognition.start();
         isCapturing = true;
         isPaused = false;
-        pauseBtn.textContent = 'Pause';
-        setStatus('Listening… speak naturally for live mindmap and translation updates.', true);
+        pauseBtn.textContent = "Pause";
+        setStatus(
+          "Listening… speak naturally for live AI-powered mindmap.",
+          true
+        );
         startBtn.disabled = true;
         pauseBtn.disabled = false;
         stopBtn.disabled = false;
         exportBtn.disabled = false;
       });
 
-      pauseBtn.addEventListener('click', () => {
+      pauseBtn.addEventListener("click", () => {
         if (!recognition) return;
         if (!isPaused) {
           allowAutoRestart = false;
           recognition.stop();
-          translationPipeline.flush();
           isPaused = true;
-          pauseBtn.textContent = 'Resume';
-          setStatus('Paused • resume when ready', false);
+          pauseBtn.textContent = "Resume";
+          setStatus("Paused • resume when ready", false);
         } else {
-          recognition.lang = sourceLangSelect.value === 'auto' ? navigator.language || 'en-US' : sourceLangSelect.value;
+          recognition.lang =
+            sourceLangSelect.value === "auto"
+              ? navigator.language || "en-US"
+              : sourceLangSelect.value;
           allowAutoRestart = true;
           recognition.start();
           isPaused = false;
-          pauseBtn.textContent = 'Pause';
-          setStatus('Listening… speak naturally for live mindmap and translation updates.', true);
+          pauseBtn.textContent = "Pause";
+          setStatus(
+            "Listening… speak naturally for live AI-powered mindmap.",
+            true
+          );
         }
       });
 
-      stopBtn.addEventListener('click', () => {
+      stopBtn.addEventListener("click", () => {
         if (recognition) {
           allowAutoRestart = false;
           recognition.stop();
         }
-        translationPipeline.flush();
         resetSession();
       });
 
-      exportBtn.addEventListener('click', exportSession);
+      exportBtn.addEventListener("click", exportSession);
 
-      noteInput.addEventListener('keydown', event => {
-        if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+      noteInput.addEventListener("keydown", (event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
           const note = noteInput.value.trim();
           if (note) {
             processTranscript(note, true);
-            translationPipeline.handleFinal(note);
-            noteInput.value = '';
+            noteInput.value = "";
           }
         }
       });
 
-      sourceLangSelect.addEventListener('change', () => {
+      sourceLangSelect.addEventListener("change", () => {
         const lang = sourceLangSelect.value;
-        translationPipeline.setSourceLang(lang);
         if (recognition) {
           const wasActive = isCapturing && !isPaused;
           if (wasActive) {
             allowAutoRestart = false;
             recognition.stop();
           }
-          recognition.lang = lang === 'auto' ? navigator.language || 'en-US' : lang;
+          recognition.lang =
+            lang === "auto" ? navigator.language || "en-US" : lang;
           if (wasActive) {
             setTimeout(() => {
               allowAutoRestart = true;
@@ -1109,38 +1029,19 @@
             }, 250);
           }
         }
-        setStatus(`Source language set to ${sourceLangSelect.selectedOptions[0].textContent}.`, isCapturing && !isPaused);
-      });
-
-      targetLangSelect.addEventListener('change', () => {
-        translationPipeline.setTargetLang(targetLangSelect.value);
-        translationPipeline.emit();
-      });
-
-      waitPolicyInput.addEventListener('input', () => {
-        waitLabel.textContent = waitPolicyInput.value;
-        translationPipeline.setPolicy({
-          waitTokens: Number(waitPolicyInput.value),
-          stabilizationMs: Number(stabilizationInput.value)
-        });
-      });
-
-      stabilizationInput.addEventListener('input', () => {
-        stabilizationLabel.textContent = stabilizationInput.value;
-        translationPipeline.setPolicy({
-          waitTokens: Number(waitPolicyInput.value),
-          stabilizationMs: Number(stabilizationInput.value)
-        });
+        setStatus(
+          `Source language set to ${sourceLangSelect.selectedOptions[0].textContent}.`,
+          isCapturing && !isPaused
+        );
       });
 
       function initialiseControls() {
-        const preferredSource = (navigator.language && LANGUAGE_OPTIONS.some(l => l.code === navigator.language))
-          ? navigator.language
-          : 'en-US';
+        const preferredSource =
+          navigator.language &&
+          LANGUAGE_OPTIONS.some((l) => l.code === navigator.language)
+            ? navigator.language
+            : "en-US";
         populateSelect(sourceLangSelect, LANGUAGE_OPTIONS, preferredSource);
-        populateSelect(targetLangSelect, TARGET_LANGUAGE_OPTIONS, 'en');
-        translationPipeline.setSourceLang(sourceLangSelect.value);
-        translationPipeline.setTargetLang(targetLangSelect.value);
       }
 
       initCytoscape();
