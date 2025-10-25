@@ -452,52 +452,7 @@
       const aiOutput = document.getElementById("ai-output");
       const aiStatus = document.getElementById("ai-status");
 
-      const STOPWORDS = new Set([
-        "the",
-        "a",
-        "an",
-        "and",
-        "or",
-        "of",
-        "to",
-        "in",
-        "for",
-        "on",
-        "with",
-        "at",
-        "by",
-        "is",
-        "are",
-        "be",
-        "we",
-        "you",
-        "i",
-        "it",
-        "that",
-        "this",
-        "as",
-        "our",
-        "your",
-        "from",
-        "about",
-        "was",
-        "were",
-        "have",
-        "has",
-        "had",
-        "will",
-        "would",
-        "can",
-        "could",
-        "should",
-        "they",
-        "them",
-        "their",
-        "but",
-        "if",
-        "not",
-        "so",
-      ]);
+      // STOPWORDS removed - AI handles intelligent filtering
 
       const LANGUAGE_OPTIONS = [
         { code: "auto", label: "Auto detect" },
@@ -528,6 +483,8 @@
       let allowAutoRestart = false;
       let aiAnalysisPending = false;
       let aiAnalysisQueue = [];
+      let lastAICall = 0;
+      const AI_RATE_LIMIT_MS = 2000; // Wait 2 seconds between AI calls
 
       // Backend API is now handling the API key securely
 
@@ -587,36 +544,13 @@
       }
 
       function tokenize(text) {
+        // Simple tokenization for storing segments (AI handles the intelligence)
         return (text.toLowerCase().match(/[a-z0-9'\-]+/g) || []).filter(
-          (token) => {
-            return token.length > 2 && !STOPWORDS.has(token);
-          }
+          (token) => token.length > 2
         );
       }
 
-      // Extract meaningful multi-word phrases for better concept extraction
-      function extractPhrases(text) {
-        const tokens = tokenize(text);
-        const phrases = [];
-
-        // Extract 2-word phrases
-        for (let i = 0; i < tokens.length - 1; i++) {
-          const phrase = `${tokens[i]} ${tokens[i + 1]}`;
-          if (phrase.length > 3) {
-            phrases.push(phrase);
-          }
-        }
-
-        // Extract 3-word phrases (optional, can be heavy)
-        // for (let i = 0; i < tokens.length - 2; i++) {
-        //   const phrase = `${tokens[i]} ${tokens[i + 1]} ${tokens[i + 2]}`;
-        //   if (phrase.length > 5) {
-        //     phrases.push(phrase);
-        //   }
-        // }
-
-        return phrases;
-      }
+      // extractPhrases() removed - AI handles intelligent phrase extraction
 
       function decayGraph(factor = 0.995) {
         for (const node of graph.nodes.values()) {
@@ -719,8 +653,21 @@
       }
 
       async function processWithAI(sentence) {
+        // Rate limiting: wait if we called AI too recently
+        const now = Date.now();
+        const timeSinceLastCall = now - lastAICall;
+        if (timeSinceLastCall < AI_RATE_LIMIT_MS) {
+          const waitTime = AI_RATE_LIMIT_MS - timeSinceLastCall;
+          updateAIStatus(
+            `Rate limited - waiting ${Math.round(waitTime / 1000)}s...`,
+            false
+          );
+          await new Promise((resolve) => setTimeout(resolve, waitTime));
+        }
+
         try {
           updateAIStatus("Extracting theme...", false);
+          lastAICall = Date.now();
 
           // Step 1: Extract theme from sentence
           const themeResponse = await fetch(
@@ -785,18 +732,39 @@
           );
         } catch (error) {
           console.error("AI processing error:", error);
-          updateAIStatus("AI processing failed", false, error.message);
+          if (error.message.includes("429")) {
+            updateAIStatus(
+              "Rate limited - slowing down...",
+              false,
+              "Too many requests. Wait a moment."
+            );
+          } else {
+            updateAIStatus("AI processing failed", false, error.message);
+          }
         }
       }
 
       async function analyzeWithGroq() {
         if (aiAnalysisPending) return;
 
+        // Rate limiting: wait if we called AI too recently
+        const now = Date.now();
+        const timeSinceLastCall = now - lastAICall;
+        if (timeSinceLastCall < AI_RATE_LIMIT_MS) {
+          const waitTime = AI_RATE_LIMIT_MS - timeSinceLastCall;
+          updateAIStatus(
+            `Rate limited - waiting ${Math.round(waitTime / 1000)}s...`,
+            false
+          );
+          await new Promise((resolve) => setTimeout(resolve, waitTime));
+        }
+
         const transcriptsToAnalyze = recentTranscripts.slice(-3).join(" ");
         if (transcriptsToAnalyze.length < 50) return; // Wait for more content
 
         aiAnalysisPending = true;
         updateAIStatus("Analyzing...", false);
+        lastAICall = Date.now();
 
         try {
           const model = modelSelect.value;
@@ -830,7 +798,15 @@
           }
         } catch (error) {
           console.error("AI Analysis error:", error);
-          updateAIStatus("Analysis failed", false, error.message);
+          if (error.message.includes("429")) {
+            updateAIStatus(
+              "Rate limited - slowing down...",
+              false,
+              "Too many requests. Wait a moment."
+            );
+          } else {
+            updateAIStatus("Analysis failed", false, error.message);
+          }
         } finally {
           aiAnalysisPending = false;
         }

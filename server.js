@@ -123,8 +123,24 @@ Return JSON array of connections.`;
     );
 
     const content = response.data.choices[0]?.message?.content;
-    const jsonMatch = content.match(/\[[\s\S]*\]/);
-    const connections = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+    
+    // Extract JSON array, handling markdown code blocks
+    let jsonMatch = content.match(/```json\s*(\[[\s\S]*?\])\s*```/);
+    if (!jsonMatch) {
+      jsonMatch = content.match(/```\s*(\[[\s\S]*?\])\s*```/);
+    }
+    if (!jsonMatch) {
+      jsonMatch = content.match(/(\[[\s\S]*\])/);
+    }
+    
+    let connections = [];
+    if (jsonMatch && jsonMatch[1]) {
+      try {
+        connections = JSON.parse(jsonMatch[1]);
+      } catch (e) {
+        console.error('JSON parse error:', e.message, 'Content:', content);
+      }
+    }
 
     res.json({ 
       success: true,
