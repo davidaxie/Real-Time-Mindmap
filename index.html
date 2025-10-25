@@ -594,6 +594,30 @@
         );
       }
 
+      // Extract meaningful multi-word phrases for better concept extraction
+      function extractPhrases(text) {
+        const tokens = tokenize(text);
+        const phrases = [];
+
+        // Extract 2-word phrases
+        for (let i = 0; i < tokens.length - 1; i++) {
+          const phrase = `${tokens[i]} ${tokens[i + 1]}`;
+          if (phrase.length > 3) {
+            phrases.push(phrase);
+          }
+        }
+
+        // Extract 3-word phrases (optional, can be heavy)
+        // for (let i = 0; i < tokens.length - 2; i++) {
+        //   const phrase = `${tokens[i]} ${tokens[i + 1]} ${tokens[i + 2]}`;
+        //   if (phrase.length > 5) {
+        //     phrases.push(phrase);
+        //   }
+        // }
+
+        return phrases;
+      }
+
       function decayGraph(factor = 0.995) {
         for (const node of graph.nodes.values()) {
           node.weight *= factor;
@@ -624,19 +648,79 @@
         graph.edges.get(id).weight += increment;
       }
 
+      // Track recent text to prevent duplicate processing (anti-stutter)
+      const recentTextHashes = new Map();
+      function hashText(text) {
+        let hash = 0;
+        for (let i = 0; i < text.length; i++) {
+          const char = text.charCodeAt(i);
+          hash = (hash << 5) - hash + char;
+          hash = hash & hash;
+        }
+        return hash;
+      }
+
+      function isDuplicate(text, withinMs = 1000) {
+        const hash = hashText(text.toLowerCase());
+        const now = Date.now();
+
+        if (recentTextHashes.has(hash)) {
+          const seenAt = recentTextHashes.get(hash);
+          if (now - seenAt < withinMs) {
+            return true;
+          }
+        }
+
+        recentTextHashes.set(hash, now);
+
+        // Cleanup old hashes
+        for (const [h, time] of recentTextHashes.entries()) {
+          if (now - time > withinMs * 10) {
+            recentTextHashes.delete(h);
+          }
+        }
+
+        return false;
+      }
+
       async function processTranscript(text, isFinal) {
         if (!text.trim()) return;
 
-        // Simple token-based processing for immediate feedback
+        // Skip if this is a duplicate of recent text (within 1 second)
+        if (isFinal && isDuplicate(text, 1000)) {
+          return;
+        }
+
         const tokens = tokenize(text);
+        const phrases = extractPhrases(text);
+
         if (tokens.length) {
           const weight = isFinal ? 1 : 0.4;
+
+          // Add individual tokens as nodes
           for (const token of tokens) {
             addNode(token, token, weight);
           }
+
+          // Add phrases as nodes (higher weight for multi-word concepts)
+          for (const phrase of phrases) {
+            addNode(phrase, phrase, weight * 1.5); // Phrases worth 1.5x tokens
+          }
+
+          // Connect tokens in sequence
           for (let i = 0; i < tokens.length - 1; i++) {
             addEdge(tokens[i], tokens[i + 1], weight * 0.8);
           }
+
+          // Connect phrases to their component tokens
+          for (const phrase of phrases) {
+            const words = phrase.split(" ");
+            if (words.length === 2) {
+              addEdge(phrase, words[0], weight * 1.2);
+              addEdge(phrase, words[1], weight * 1.2);
+            }
+          }
+
           decayGraph(0.997);
           updateMindmap();
         }
