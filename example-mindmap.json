@@ -1,0 +1,173 @@
+{
+  "exportedAt": "2025-01-25T23:10:00.000Z",
+  "segments": [],
+  "nodes": [
+    {
+      "id": "machine learning",
+      "label": "Machine Learning",
+      "weight": 45
+    },
+    {
+      "id": "python programming",
+      "label": "Python Programming",
+      "weight": 38
+    },
+    {
+      "id": "data science",
+      "label": "Data Science",
+      "weight": 32
+    },
+    {
+      "id": "neural networks",
+      "label": "Neural Networks",
+      "weight": 28
+    },
+    {
+      "id": "deep learning",
+      "label": "Deep Learning",
+      "weight": 25
+    },
+    {
+      "id": "natural language processing",
+      "label": "Natural Language Processing",
+      "weight": 22
+    },
+    {
+      "id": "computer vision",
+      "label": "Computer Vision",
+      "weight": 18
+    },
+    {
+      "id": "pytorch",
+      "label": "PyTorch",
+      "weight": 15
+    },
+    {
+      "id": "tensorflow",
+      "label": "TensorFlow",
+      "weight": 15
+    },
+    {
+      "id": "jupyter notebooks",
+      "label": "Jupyter Notebooks",
+      "weight": 12
+    },
+    {
+      "id": "pandas",
+      "label": "Pandas",
+      "weight": 10
+    },
+    {
+      "id": "numpy",
+      "label": "NumPy",
+      "weight": 8
+    },
+    {
+      "id": "scikit-learn",
+      "label": "scikit-learn",
+      "weight": 8
+    },
+    {
+      "id": "reinforcement learning",
+      "label": "Reinforcement Learning",
+      "weight": 7
+    },
+    {
+      "id": "unsupervised learning",
+      "label": "Unsupervised Learning",
+      "weight": 6
+    }
+  ],
+  "edges": [
+    {
+      "id": "machine learning|python programming",
+      "source": "machine learning",
+      "target": "python programming",
+      "weight": 15
+    },
+    {
+      "id": "machine learning|data science",
+      "source": "machine learning",
+      "target": "data science",
+      "weight": 12
+    },
+    {
+      "id": "machine learning|neural networks",
+      "source": "machine learning",
+      "target": "neural networks",
+      "weight": 10
+    },
+    {
+      "id": "neural networks|deep learning",
+      "source": "neural networks",
+      "target": "deep learning",
+      "weight": 8
+    },
+    {
+      "id": "deep learning|natural language processing",
+      "source": "deep learning",
+      "target": "natural language processing",
+      "weight": 6
+    },
+    {
+      "id": "deep learning|computer vision",
+      "source": "deep learning",
+      "target": "computer vision",
+      "weight": 6
+    },
+    {
+      "id": "python programming|pytorch",
+      "source": "python programming",
+      "target": "pytorch",
+      "weight": 8
+    },
+    {
+      "id": "python programming|tensorflow",
+      "source": "python programming",
+      "target": "tensorflow",
+      "weight": 8
+    },
+    {
+      "id": "python programming|jupyter notebooks",
+      "source": "python programming",
+      "target": "jupyter notebooks",
+      "weight": 5
+    },
+    {
+      "id": "data science|pandas",
+      "source": "data science",
+      "target": "pandas",
+      "weight": 7
+    },
+    {
+      "id": "data science|numpy",
+      "source": "data science",
+      "target": "numpy",
+      "weight": 6
+    },
+    {
+      "id": "data science|scikit-learn",
+      "source": "data science",
+      "target": "scikit-learn",
+      "weight": 5
+    },
+    {
+      "id": "machine learning|reinforcement learning",
+      "source": "machine learning",
+      "target": "reinforcement learning",
+      "weight": 4
+    },
+    {
+      "id": "machine learning|unsupervised learning",
+      "source": "machine learning",
+      "target": "unsupervised learning",
+      "weight": 3
+    }
+  ],
+  "metadata": {
+    "totalNodes": 15,
+    "totalEdges": 14,
+    "maxWeight": 45
+  }
+}
+

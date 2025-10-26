@@ -233,12 +233,17 @@
         color: rgba(107, 114, 128, 0.7);
         margin-top: 0.4rem;
       }
-      #cy {
+      #mindmap {
         width: 100%;
         flex: 1;
         min-height: 520px;
         border-top: 1px solid rgba(209, 213, 219, 0.6);
         background: rgba(241, 245, 249, 0.85);
+      }
+
+      #mindmap > div {
+        width: 100%;
+        height: 100%;
       }
       #details {
         flex: 1;
@@ -307,7 +312,11 @@
         }
       }
     </style>
-    <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+    <script src="./node_modules/mind-elixir/dist/MindElixir.iife.js"></script>
+    <link
+      rel="stylesheet"
+      href="./node_modules/mind-elixir/dist/MindElixir.css"
+    />
   </head>
   <body>
     <header>
@@ -357,6 +366,13 @@
             <button id="export-btn" class="secondary" disabled>
               Export JSON
             </button>
+            <button id="load-btn" class="secondary">Load JSON</button>
+            <input
+              type="file"
+              id="file-input"
+              accept=".json"
+              style="display: none"
+            />
           </div>
           <div class="status-line">
             <span id="status-indicator" class="status-indicator"></span>
@@ -377,7 +393,9 @@
           </div>
           <p class="hint">
             The recogniser keeps a rolling buffer. Pause when silence exceeds a
-            few seconds to help with processing.
+            few seconds to help with processing. The mindmap uses a heap layout:
+            nodes with highest weight stay in the center, others branch out by
+            weight.
           </p>
         </div>
       </section>
@@ -419,7 +437,7 @@
 
       <section style="grid-column: 1 / -1; min-height: 640px">
         <h2>Mindmap</h2>
-        <div id="cy"></div>
+        <div id="mindmap"></div>
       </section>
 
       <section>
@@ -436,21 +454,6 @@
     <script>
       const SpeechRecognition =
         window.SpeechRecognition || window.webkitSpeechRecognition;
-
-      const statusIndicator = document.getElementById("status-indicator");
-      const statusText = document.getElementById("status-text");
-      const startBtn = document.getElementById("start-btn");
-      const pauseBtn = document.getElementById("pause-btn");
-      const stopBtn = document.getElementById("stop-btn");
-      const exportBtn = document.getElementById("export-btn");
-      const liveTranscript = document.getElementById("live-transcript");
-      const transcriptLog = document.getElementById("transcript-log");
-      const noteInput = document.getElementById("note-input");
-      const detailsPanel = document.getElementById("details");
-      const sourceLangSelect = document.getElementById("source-lang");
-      const modelSelect = document.getElementById("model-select");
-      const aiOutput = document.getElementById("ai-output");
-      const aiStatus = document.getElementById("ai-status");
 
       // STOPWORDS removed - AI handles intelligent filtering
 
@@ -473,11 +476,51 @@
         edges: new Map(),
       };
 
+      // Global API call queue variables
+      let apiCallQueue = [];
+      let isProcessingQueue = false;
+
+      // Global API call queue to serialize requests
+      async function queueAPICall(apiFunction) {
+        return new Promise((resolve, reject) => {
+          apiCallQueue.push({ apiFunction, resolve, reject });
+          processQueue();
+        });
+      }
+
+      async function processQueue() {
+        if (isProcessingQueue || apiCallQueue.length === 0) return;
+
+        isProcessingQueue = true;
+
+        while (apiCallQueue.length > 0) {
+          const { apiFunction, resolve, reject } = apiCallQueue.shift();
+
+          try {
+            const result = await apiFunction();
+            resolve(result);
+
+            // Wait between API calls to respect rate limits
+            const now = Date.now();
+            const timeSinceLastCall = now - lastAICall;
+            if (timeSinceLastCall < AI_RATE_LIMIT_MS) {
+              const waitTime = AI_RATE_LIMIT_MS - timeSinceLastCall;
+              await new Promise((r) => setTimeout(r, waitTime));
+            }
+            lastAICall = Date.now();
+          } catch (error) {
+            reject(error);
+          }
+        }
+
+        isProcessingQueue = false;
+      }
+
       const segments = [];
       const recentTranscripts = [];
       const maxTranscriptBuffer = 10;
-      let cy;
       let recognition;
+      let recognitionInitialized = false;
       let isPaused = false;
       let isCapturing = false;
       let allowAutoRestart = false;
@@ -486,48 +529,138 @@
       let lastAICall = 0;
       const AI_RATE_LIMIT_MS = 2000; // Wait 2 seconds between AI calls
 
+      // For continuous speech without pauses
+      let lastTranscriptTime = Date.now();
+      let lastFinalTime = Date.now();
+      const CONTINUOUS_SPEECH_TIMEOUT = 5000; // 5 seconds before forcing finalization
+
       // Backend API is now handling the API key securely
 
-      function initCytoscape() {
-        cy = cytoscape({
-          container: document.getElementById("cy"),
-          elements: [],
-          layout: { name: "cose", animate: true, padding: 40 },
-          style: [
-            {
-              selector: "node",
-              style: {
-                label: "data(label)",
-                "text-valign": "center",
-                "font-size": "mapData(weight, 0, 40, 10, 28)",
-                color: "#1f2937",
-                "background-color": "mapData(weight, 0, 40, #c7d2fe, #fbbf24)",
-                width: "mapData(weight, 0, 40, 26, 100)",
-                height: "mapData(weight, 0, 40, 26, 100)",
-                "text-outline-width": 1,
-                "text-outline-color": "#f8fafc",
-                "background-opacity": 0.95,
-                "border-color": "#a5b4fc",
-                "border-width": "mapData(weight, 0, 40, 2, 6)",
-              },
-            },
-            {
-              selector: "edge",
-              style: {
-                "curve-style": "unbundled-bezier",
-                "line-color": "rgba(148, 163, 184, 0.55)",
-                "target-arrow-color": "rgba(148, 163, 184, 0.55)",
-                width: "mapData(weight, 0, 30, 1, 9)",
-                opacity: 0.65,
-              },
-            },
-          ],
+      let mind = null; // Mind Elixir instance
+
+      // Get all DOM elements
+      const statusIndicator = document.getElementById("status-indicator");
+      const statusText = document.getElementById("status-text");
+      const startBtn = document.getElementById("start-btn");
+      const pauseBtn = document.getElementById("pause-btn");
+      const stopBtn = document.getElementById("stop-btn");
+      const exportBtn = document.getElementById("export-btn");
+      const liveTranscript = document.getElementById("live-transcript");
+      const transcriptLog = document.getElementById("transcript-log");
+      const noteInput = document.getElementById("note-input");
+      const detailsPanel = document.getElementById("details");
+      const sourceLangSelect = document.getElementById("source-lang");
+      const modelSelect = document.getElementById("model-select");
+      const aiOutput = document.getElementById("ai-output");
+      const aiStatus = document.getElementById("ai-status");
+
+      function initMindMap() {
+        try {
+          if (typeof MindElixir === "undefined") {
+            console.error("❌ Mind Elixir not loaded - skipping mind map init");
+            // Create a placeholder
+            const mindmapEl = document.getElementById("mindmap");
+            if (mindmapEl) {
+              mindmapEl.innerHTML =
+                "<p style='padding: 20px; text-align: center;'>Mind map will appear here. Mind Elixir loading...</p>";
+            }
+            return;
+          }
+
+          console.log("🔵 MindElixir found:", typeof MindElixir);
+
+          // Create instance with new
+          mind = new MindElixir({
+            el: "#mindmap",
+            direction: MindElixir.SIDE,
+            locale: "en",
+            contextMenu: false,
+            toolBar: false,
+            keypress: false,
+            draggable: false,
+            editable: false,
+          });
+
+          // Create initial data using "Talkstorm" as root
+          const initialData = {
+            topic: "Talkstorm",
+            id: "talkstorm",
+            expanded: true,
+          };
+
+          // Initialize with data
+          mind.init(initialData);
+
+          console.log("✅ Mind map initialized");
+        } catch (error) {
+          console.error("❌ Error initializing mind map:", error);
+        }
+      }
+
+      // Convert graph nodes to Mind Elixir format - Hub & Spoke Layout
+      function convertToMindElixirFormat(sortedNodes) {
+        const n = sortedNodes.length;
+
+        // Root node is always "Talkstorm"
+        const rootNode = {
+          topic: "Talkstorm",
+          id: "talkstorm",
+          expanded: true,
+        };
+
+        if (n === 0) {
+          return rootNode;
+        }
+
+        if (n <= 5) {
+          // For ≤5 nodes: Simple linear structure - all as direct children of Talkstorm
+          rootNode.children = sortedNodes.map((node) => ({
+            topic: node.label,
+            id: node.id,
+            expanded: true,
+          }));
+          return rootNode;
+        }
+
+        // For >5 nodes: Hub & Spoke layout
+        // 1) Talkstorm (center/root)
+        // 2) Bubble nodes: up to 35% of total, directly connected to Talkstorm
+        // 3) Branch nodes: rest, children of bubble nodes
+
+        const bubbleSize = Math.max(1, Math.floor(n * 0.35));
+        const bubbleNodes = sortedNodes.slice(0, bubbleSize);
+        const branchNodes = sortedNodes.slice(bubbleSize);
+
+        console.log(
+          `📊 Talkstorm Layout: ${n} nodes | Bubble: ${bubbleNodes.length} | Branches: ${branchNodes.length}`
+        );
+
+        // Build bubble layer (direct children of Talkstorm)
+        const bubbleChildren = bubbleNodes.map((bubbleNode) => {
+          // Each bubble node gets some branch nodes as children
+          const childrenPerBubble = Math.floor(
+            branchNodes.length / bubbleNodes.length
+          );
+          const startIdx = bubbleNodes.indexOf(bubbleNode) * childrenPerBubble;
+          const endIdx = startIdx + childrenPerBubble;
+          const nodeChildren = branchNodes.slice(startIdx, endIdx);
+
+          return {
+            topic: bubbleNode.label,
+            id: bubbleNode.id,
+            expanded: true,
+            children: nodeChildren.map((node) => ({
+              topic: node.label,
+              id: node.id,
+              expanded: true,
+            })),
+          };
         });
 
-        cy.on("tap", "node", (evt) => {
-          const node = evt.target.data();
-          showNodeDetails(node.id);
-        });
+        // Build root with bubble children
+        rootNode.children = bubbleChildren;
+
+        return rootNode;
       }
 
       function populateSelect(select, options, preferred) {
@@ -574,12 +707,33 @@
         graph.nodes.get(id).weight += increment;
       }
 
+      // Check if a node with similar label already exists
+      function findExistingNode(label) {
+        const normalizedLabel = label.toLowerCase();
+        for (const [nodeId, node] of graph.nodes.entries()) {
+          if (node.label.toLowerCase() === normalizedLabel) {
+            return node;
+          }
+        }
+        return null;
+      }
+
       function addEdge(a, b, increment) {
+        // Validate and normalize increment
+        const safeIncrement =
+          increment && !isNaN(increment) ? Number(increment) : 1;
+
         const id = a < b ? `${a}|${b}` : `${b}|${a}`;
         if (!graph.edges.has(id)) {
-          graph.edges.set(id, { id, source: a, target: b, weight: 0 });
+          graph.edges.set(id, {
+            id,
+            source: a,
+            target: b,
+            weight: safeIncrement,
+          });
+        } else {
+          graph.edges.get(id).weight += safeIncrement;
         }
-        graph.edges.get(id).weight += increment;
       }
 
       // Track recent text to prevent duplicate processing (anti-stutter)
@@ -620,20 +774,48 @@
       async function processTranscript(text, isFinal) {
         if (!text.trim()) return;
 
+        const now = Date.now();
+
+        // Update transcript timestamp
+        lastTranscriptTime = now;
+
+        // Track when we last had a final result
+        if (isFinal) {
+          lastFinalTime = now;
+        }
+
+        // Check if continuous speech without pause (force finalization)
+        const timeSinceLastFinal = now - lastFinalTime;
+        const isForcedFinal =
+          !isFinal &&
+          timeSinceLastFinal > CONTINUOUS_SPEECH_TIMEOUT &&
+          text.length > 30;
+
+        // Combine natural finalization with forced finalization
+        const shouldProcessAsFinal = isFinal || isForcedFinal;
+
         // Skip if this is a duplicate of recent text (within 1 second)
-        if (isFinal && isDuplicate(text, 1000)) {
+        if (shouldProcessAsFinal && isDuplicate(text, 1000)) {
           return;
         }
 
         // For final sentences, use AI to extract theme
-        if (isFinal && text.length > 20) {
+        if (shouldProcessAsFinal && text.length > 20) {
+          if (isForcedFinal) {
+            console.log(
+              `🔵 Forcing finalization after ${Math.round(
+                timeSinceLastFinal / 1000
+              )}s of continuous speech`
+            );
+          }
           await processWithAI(text);
+          lastFinalTime = now; // Reset timer after processing
         } else if (text.length > 20) {
           // For interim results, skip AI processing to save API calls
           return;
         }
 
-        if (isFinal) {
+        if (shouldProcessAsFinal) {
           const timestamp = new Date();
           segments.push({
             id: crypto.randomUUID(),
@@ -653,81 +835,195 @@
       }
 
       async function processWithAI(sentence) {
-        // Rate limiting: wait if we called AI too recently
-        const now = Date.now();
-        const timeSinceLastCall = now - lastAICall;
-        if (timeSinceLastCall < AI_RATE_LIMIT_MS) {
-          const waitTime = AI_RATE_LIMIT_MS - timeSinceLastCall;
-          updateAIStatus(
-            `Rate limited - waiting ${Math.round(waitTime / 1000)}s...`,
-            false
-          );
-          await new Promise((resolve) => setTimeout(resolve, waitTime));
-        }
-
         try {
           updateAIStatus("Extracting theme...", false);
-          lastAICall = Date.now();
 
-          // Step 1: Extract theme from sentence
-          const themeResponse = await fetch(
-            "http://localhost:3001/api/extract-theme",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                sentence,
-                model: modelSelect.value,
-              }),
-            }
-          );
+          // Step 1: Extract theme from sentence (queued)
+          const { theme } = await queueAPICall(async () => {
+            const themeResponse = await fetch(
+              "http://localhost:3001/api/extract-theme",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  sentence,
+                  model: modelSelect.value,
+                }),
+              }
+            );
 
-          if (!themeResponse.ok) throw new Error("Theme extraction failed");
-          const { theme } = await themeResponse.json();
+            if (!themeResponse.ok) throw new Error("Theme extraction failed");
+            const data = await themeResponse.json();
+            return data;
+          });
 
           if (!theme) return;
 
-          // Step 2: Get existing nodes
-          const existingNodes = cy.nodes().map((n) => n.data("label"));
+          // Filter out conversational AI responses
+          const conversationalPatterns = [
+            /i['\u2019]d?\s+(be\s+)?happy/i,
+            /i can\s+/i,
+            /i would\s+/i,
+            /id happy/i,
+            /create.*mind.*map.*real/i,
+            /^i\s+/i,
+            /^i'd\s+/i,
+            /^i'am\s+/i,
+            /can help/i,
+            /would you like/i,
+            /let me/i,
+          ];
 
-          // Step 3: Find connections to existing nodes
+          const isConversational = conversationalPatterns.some((pattern) =>
+            pattern.test(theme)
+          );
+
+          if (isConversational || theme.length > 50) {
+            console.warn(`🚫 Rejected conversational theme: "${theme}"`);
+            // Extract first 3 words as fallback
+            const words = sentence
+              .split(/\s+/)
+              .filter((w) => w.length > 2)
+              .slice(0, 3);
+            theme = words.join(" ") || sentence.substring(0, 30);
+            console.log(`✅ Using fallback theme: "${theme}"`);
+          }
+
+          // Step 2: Get existing nodes with their current weights
+          const allExistingNodes = Array.from(graph.nodes.values());
+
+          // Filter to top N nodes by weight for faster, more relevant connections
+          // This focuses on the most important/recent topics
+          const MAX_NODES_TO_CONSIDER = 15; // Consider top 15 nodes
+          const topExistingNodes = allExistingNodes
+            .sort((a, b) => b.weight - a.weight)
+            .slice(0, MAX_NODES_TO_CONSIDER);
+
+          const existingNodeLabels = topExistingNodes.map((n) => n.label);
+
+          // Step 3: Find connections to existing nodes (queued)
           updateAIStatus("Finding connections...", false);
-          const connectionsResponse = await fetch(
-            "http://localhost:3001/api/find-connections",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                newNode: theme,
-                existingNodes,
-                model: modelSelect.value,
-              }),
+          const { connections: connectionsData } = await queueAPICall(
+            async () => {
+              const connectionsResponse = await fetch(
+                "http://localhost:3001/api/find-connections",
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    newNode: theme,
+                    existingNodes: existingNodeLabels,
+                    model: modelSelect.value,
+                  }),
+                }
+              );
+
+              let connections = [];
+              if (connectionsResponse.ok) {
+                const data = await connectionsResponse.json();
+                connections = data.connections || [];
+              }
+              return { connections };
             }
           );
 
-          let connections = [];
-          if (connectionsResponse.ok) {
-            const { connections: conns } = await connectionsResponse.json();
-            connections = conns || [];
+          let connections = connectionsData || [];
+
+          // Ensure at least one connection to maintain single graph
+          // If no AI connections found, connect to the highest weighted node from ALL nodes
+          if (connections.length === 0 && allExistingNodes.length > 0) {
+            const highestWeighted = allExistingNodes.sort(
+              (a, b) => b.weight - a.weight
+            )[0];
+            connections.push({
+              node: highestWeighted.label,
+              strength: 0.3,
+              reason: "fallback",
+            });
           }
 
-          // Step 4: Add the new node with weight based on connections
-          const baseWeight = 5;
-          const connectionBonus = connections.length * 2;
-          const nodeWeight = baseWeight + connectionBonus;
+          // Step 4: Reassign weights to existing nodes based on relevance
+          // Nodes mentioned in connections get additional weight
+          const weightIncrement = 3; // Add weight to connected existing nodes
+          const validatedConnections = []; // Store validated connections for reporting
 
-          addNode(theme, theme, nodeWeight);
-
-          // Step 5: Add connections to existing nodes
           for (const conn of connections) {
-            addEdge(theme, conn.node, conn.strength * 10);
+            const nodeId = conn.node.toLowerCase();
+            // Validate conn.strength and ensure it's numeric
+            const strength = Number(conn.strength);
+            const validStrength =
+              !isNaN(strength) && strength > 0 ? strength : 0.5;
+
+            if (graph.nodes.has(nodeId)) {
+              const node = graph.nodes.get(nodeId);
+              node.weight += weightIncrement * validStrength;
+              // Cap weight at a reasonable maximum
+              node.weight = Math.min(node.weight, 100);
+
+              // Store for reporting
+              validatedConnections.push({
+                node: conn.node,
+                strength: validStrength,
+              });
+            }
           }
 
-          decayGraph(0.998);
+          // Step 5: Check if theme already exists (avoid duplicates)
+          // Normalize theme ID to lowercase to prevent duplicates
+          const normalizedThemeId = theme.toLowerCase().trim();
+
+          // Check if node exists by ID (normalized)
+          let existingNode;
+          if (graph.nodes.has(normalizedThemeId)) {
+            existingNode = graph.nodes.get(normalizedThemeId);
+          } else {
+            // Check by label match as fallback
+            existingNode = findExistingNode(theme);
+          }
+
+          let nodeWeight;
+          if (existingNode) {
+            // Node already exists, just increase its weight
+            existingNode.weight += weightIncrement + 5; // Add bonus for being mentioned
+            existingNode.weight = Math.min(existingNode.weight, 100); // Cap
+            nodeWeight = existingNode.weight;
+          } else {
+            // New node, add it with normalized ID but proper label
+            const baseWeight = 5;
+            const connectionBonus = connections.length * 2;
+            nodeWeight = baseWeight + connectionBonus;
+            addNode(normalizedThemeId, theme, nodeWeight);
+          }
+
+          // Step 6: Add connections to existing nodes using validated connections
+          for (const conn of validatedConnections) {
+            addEdge(
+              normalizedThemeId,
+              conn.node.toLowerCase(),
+              conn.strength * 10
+            );
+          }
+
+          // Step 7: Apply decay to nodes not connected to recent themes
+          decayGraph(0.995);
+
+          // Step 8: Update mindmap with heap layout
           updateMindmap();
 
+          // Calculate weight changes using validated connections
+          const weightChanges = [];
+          for (const conn of validatedConnections) {
+            weightChanges.push(
+              `${conn.node}+${Math.round(weightIncrement * conn.strength)}`
+            );
+          }
+
           updateAIStatus(
-            `Added: "${theme}" (${connections.length} connections)`,
+            `Added: "${theme}" (weight: ${nodeWeight})${
+              weightChanges.length > 0
+                ? ` | Boosted: ${weightChanges.join(", ")}`
+                : ""
+            }`,
             true
           );
         } catch (error) {
@@ -747,48 +1043,55 @@
       async function analyzeWithGroq() {
         if (aiAnalysisPending) return;
 
-        // Rate limiting: wait if we called AI too recently
-        const now = Date.now();
-        const timeSinceLastCall = now - lastAICall;
-        if (timeSinceLastCall < AI_RATE_LIMIT_MS) {
-          const waitTime = AI_RATE_LIMIT_MS - timeSinceLastCall;
-          updateAIStatus(
-            `Rate limited - waiting ${Math.round(waitTime / 1000)}s...`,
-            false
-          );
-          await new Promise((resolve) => setTimeout(resolve, waitTime));
-        }
-
         const transcriptsToAnalyze = recentTranscripts.slice(-3).join(" ");
         if (transcriptsToAnalyze.length < 50) return; // Wait for more content
 
         aiAnalysisPending = true;
         updateAIStatus("Analyzing...", false);
-        lastAICall = Date.now();
 
         try {
           const model = modelSelect.value;
 
-          // Call backend API instead of Groq directly
-          const response = await fetch("http://localhost:3001/api/analyze", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              transcripts: transcriptsToAnalyze,
-              model: model,
-            }),
+          // Call backend API (queued to serialize with other API calls)
+          const data = await queueAPICall(async () => {
+            const response = await fetch("http://localhost:3001/api/analyze", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                transcripts: transcriptsToAnalyze,
+                model: model,
+              }),
+            });
+
+            // Check response status first
+            if (!response.ok) {
+              const errorData = await response
+                .json()
+                .catch(() => ({ error: "Unknown error" }));
+
+              // Handle rate limiting
+              if (response.status === 429) {
+                updateAIStatus(
+                  "Rate limited - slowing down...",
+                  false,
+                  "Too many requests. Wait a moment."
+                );
+                throw new Error("Rate limited");
+              }
+
+              // Other errors
+              throw new Error(
+                errorData.message ||
+                  errorData.error ||
+                  `API error: ${response.status}`
+              );
+            }
+
+            return await response.json();
           });
 
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(
-              errorData.message || `API error: ${response.status}`
-            );
-          }
-
-          const data = await response.json();
           const analysis = data.analysis;
 
           if (analysis) {
@@ -798,13 +1101,12 @@
           }
         } catch (error) {
           console.error("AI Analysis error:", error);
-          if (error.message.includes("429")) {
-            updateAIStatus(
-              "Rate limited - slowing down...",
-              false,
-              "Too many requests. Wait a moment."
-            );
-          } else {
+
+          // Only show generic errors if not handled above
+          if (
+            !error.message.includes("429") &&
+            !error.message.includes("Rate limited")
+          ) {
             updateAIStatus("Analysis failed", false, error.message);
           }
         } finally {
@@ -826,8 +1128,14 @@
           analysis.relationships.forEach((rel) => {
             const source = rel.source?.toLowerCase().trim();
             const target = rel.target?.toLowerCase().trim();
-            const strength = Math.min(rel.strength || 1, 10);
-            if (source && target) {
+            // Ensure strength is numeric and valid
+            let strength = Number(rel.strength);
+            if (isNaN(strength) || strength <= 0) {
+              strength = 1;
+            }
+            strength = Math.min(strength, 10);
+
+            if (source && target && source !== target) {
               addEdge(source, target, strength);
             }
           });
@@ -894,27 +1202,25 @@
       }
 
       function updateMindmap() {
-        if (!cy) return;
-        const maxNodes = 60;
-        const nodes = Array.from(graph.nodes.values())
-          .sort((a, b) => b.weight - a.weight)
-          .slice(0, maxNodes);
-        const nodeSet = new Set(nodes.map((n) => n.id));
-        const edges = Array.from(graph.edges.values()).filter(
-          (e) => nodeSet.has(e.source) && nodeSet.has(e.target)
+        if (!mind) {
+          console.warn("⚠️ Mind map not available yet");
+          return;
+        }
+        const maxVisibleNodes = 20; // Show top 20 nodes
+
+        // Get top N nodes by weight (these will be shown)
+        const sortedNodes = Array.from(graph.nodes.values()).sort(
+          (a, b) => b.weight - a.weight
         );
 
-        cy.startBatch();
-        cy.elements().remove();
-        cy.add(nodes.map((n) => ({ data: n })));
-        cy.add(edges.map((e) => ({ data: e })));
-        cy.layout({
-          name: "cose",
-          animate: true,
-          randomize: false,
-          padding: 40,
-        }).run();
-        cy.endBatch();
+        // Take top 20 - these will be arranged in mind map
+        const visibleNodes = sortedNodes.slice(0, maxVisibleNodes);
+
+        // Convert to Mind Elixir format (heap structure)
+        const mindData = convertToMindElixirFormat(visibleNodes);
+
+        // Update the mind map by re-initializing with new data
+        mind.init({ nodeData: mindData });
       }
 
       function showNodeDetails(nodeId) {
@@ -959,7 +1265,9 @@
         aiOutput.textContent = "AI insights will appear here...";
         updateAIStatus("Ready", false);
         updateMindmap();
-        startBtn.disabled = false;
+
+        // Only enable start button if recognition is initialized
+        startBtn.disabled = !recognitionInitialized;
         pauseBtn.disabled = true;
         stopBtn.disabled = true;
         exportBtn.disabled = true;
@@ -967,15 +1275,37 @@
         isCapturing = false;
         isPaused = false;
         allowAutoRestart = false;
-        setStatus("Idle • microphone permissions required", false);
+
+        if (!recognitionInitialized) {
+          setStatus("Initializing speech recognition...", false);
+        } else {
+          setStatus("Ready • Click 'Start Listening' to begin", false);
+        }
       }
 
       function exportSession() {
         const payload = {
           exportedAt: new Date().toISOString(),
           segments,
-          nodes: Array.from(graph.nodes.values()),
-          edges: Array.from(graph.edges.values()),
+          nodes: Array.from(graph.nodes.values()).map((n) => ({
+            id: n.id,
+            label: n.label,
+            weight: n.weight,
+          })),
+          edges: Array.from(graph.edges.values()).map((e) => ({
+            id: e.id,
+            source: e.source,
+            target: e.target,
+            weight: e.weight,
+          })),
+          metadata: {
+            totalNodes: graph.nodes.size,
+            totalEdges: graph.edges.size,
+            maxWeight: Math.max(
+              ...Array.from(graph.nodes.values()).map((n) => n.weight),
+              0
+            ),
+          },
         };
         const blob = new Blob([JSON.stringify(payload, null, 2)], {
           type: "application/json",
@@ -988,72 +1318,169 @@
         URL.revokeObjectURL(url);
       }
 
+      function loadSession(jsonData) {
+        try {
+          const data =
+            typeof jsonData === "string" ? JSON.parse(jsonData) : jsonData;
+
+          // Clear current state
+          graph.nodes.clear();
+          graph.edges.clear();
+
+          // Load nodes with their weights
+          if (data.nodes && Array.isArray(data.nodes)) {
+            data.nodes.forEach((node) => {
+              graph.nodes.set(node.id, {
+                id: node.id,
+                label: node.label,
+                weight: node.weight || 0,
+              });
+            });
+          }
+
+          // Load edges with their weights
+          if (data.edges && Array.isArray(data.edges)) {
+            data.edges.forEach((edge) => {
+              graph.edges.set(edge.id, {
+                id: edge.id,
+                source: edge.source,
+                target: edge.target,
+                weight: edge.weight || 0,
+              });
+            });
+          }
+
+          updateMindmap();
+
+          updateAIStatus("Graph loaded successfully", true);
+        } catch (error) {
+          console.error("Load error:", error);
+          updateAIStatus("Failed to load graph", false, error.message);
+        }
+      }
+
       function setStatus(text, active) {
         statusText.textContent = text;
         statusIndicator.classList.toggle("active", active);
       }
 
       function setupRecognition() {
-        if (!SpeechRecognition) {
+        console.log("=== SETUP RECOGNITION START ===");
+        console.log("SpeechRecognition available:", !!SpeechRecognition);
+        console.log("Window.SpeechRecognition:", window.SpeechRecognition);
+        console.log(
+          "Window.webkitSpeechRecognition:",
+          window.webkitSpeechRecognition
+        );
+
+        try {
+          if (!SpeechRecognition) {
+            console.error(
+              "❌ Speech recognition not available in this browser"
+            );
+            setStatus(
+              "Speech recognition unavailable in this browser. Please use Chrome-based browsers.",
+              false
+            );
+            startBtn.disabled = true;
+            recognitionInitialized = false;
+            console.log(
+              "recognitionInitialized set to:",
+              recognitionInitialized
+            );
+            return;
+          }
+
+          console.log("Creating SpeechRecognition instance...");
+          recognition = new SpeechRecognition();
+          console.log("✅ Recognition object created:", !!recognition);
+
+          recognitionInitialized = true;
+          console.log(
+            "✅ recognitionInitialized set to:",
+            recognitionInitialized
+          );
+          recognition.continuous = true;
+          recognition.interimResults = true;
+          recognition.lang =
+            sourceLangSelect.value === "auto"
+              ? navigator.language || "en-US"
+              : sourceLangSelect.value;
+
+          recognition.onresult = (event) => {
+            let interimTranscript = "";
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+              const result = event.results[i];
+              const transcript = result[0].transcript.trim();
+              if (!transcript) continue;
+              if (result.isFinal) {
+                liveTranscript.textContent = "✔ " + transcript;
+                processTranscript(transcript, true);
+              } else {
+                interimTranscript = transcript;
+                liveTranscript.textContent = "… " + transcript;
+                processTranscript(transcript, false);
+              }
+            }
+            if (
+              !interimTranscript &&
+              !event.results[event.results.length - 1]?.isFinal
+            ) {
+              liveTranscript.textContent = "Listening…";
+            }
+          };
+
+          recognition.onerror = (event) => {
+            console.error("Speech recognition error", event.error);
+            setStatus(`Error: ${event.error}`, false);
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            stopBtn.disabled = false;
+            allowAutoRestart = false;
+            isCapturing = false;
+          };
+
+          recognition.onend = () => {
+            if (isCapturing && !isPaused && allowAutoRestart) {
+              setStatus("Restarting capture…", true);
+              recognition.start();
+            }
+          };
+        } catch (error) {
+          console.error("❌ ERROR in setupRecognition:", error);
+          console.error("Stack trace:", error.stack);
+          recognitionInitialized = false;
           setStatus(
-            "Speech recognition unavailable in this browser. Please use Chrome-based browsers.",
+            "Failed to initialize speech recognition: " + error.message,
             false
           );
           startBtn.disabled = true;
-          return;
         }
-
-        recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang =
-          sourceLangSelect.value === "auto"
-            ? navigator.language || "en-US"
-            : sourceLangSelect.value;
-
-        recognition.onresult = (event) => {
-          let interimTranscript = "";
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            const result = event.results[i];
-            const transcript = result[0].transcript.trim();
-            if (!transcript) continue;
-            if (result.isFinal) {
-              liveTranscript.textContent = "✔ " + transcript;
-              processTranscript(transcript, true);
-            } else {
-              interimTranscript = transcript;
-              liveTranscript.textContent = "… " + transcript;
-              processTranscript(transcript, false);
-            }
-          }
-          if (
-            !interimTranscript &&
-            !event.results[event.results.length - 1]?.isFinal
-          ) {
-            liveTranscript.textContent = "Listening…";
-          }
-        };
-
-        recognition.onerror = (event) => {
-          console.error("Speech recognition error", event.error);
-          setStatus(`Error: ${event.error}`, false);
-          startBtn.disabled = false;
-          pauseBtn.disabled = true;
-          stopBtn.disabled = false;
-          allowAutoRestart = false;
-          isCapturing = false;
-        };
-
-        recognition.onend = () => {
-          if (isCapturing && !isPaused && allowAutoRestart) {
-            setStatus("Restarting capture…", true);
-            recognition.start();
-          }
-        };
+        console.log(
+          "=== SETUP RECOGNITION END. Initialized:",
+          recognitionInitialized,
+          "==="
+        );
       }
 
       startBtn.addEventListener("click", () => {
-        if (!recognition) return;
+        console.log("🔴 Start button clicked");
+        console.log("🔴 Recognition initialized:", recognitionInitialized);
+        console.log("🔴 Recognition object exists:", !!recognition);
+
+        if (!recognitionInitialized || !recognition) {
+          console.error("🔴 Speech recognition not initialized");
+          console.error("🔴 Details:", {
+            recognitionInitialized,
+            recognition: !!recognition,
+            SpeechRecognitionAvailable: !!SpeechRecognition,
+          });
+          setStatus(
+            "Speech recognition not initialized. Check console for details (F12). Browser must be Chrome/Edge.",
+            false
+          );
+          return;
+        }
         recognition.lang =
           sourceLangSelect.value === "auto"
             ? navigator.language || "en-US"
@@ -1107,6 +1534,24 @@
 
       exportBtn.addEventListener("click", exportSession);
 
+      const loadBtn = document.getElementById("load-btn");
+      const fileInput = document.getElementById("file-input");
+
+      loadBtn.addEventListener("click", () => {
+        fileInput.click();
+      });
+
+      fileInput.addEventListener("change", (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          loadSession(e.target.result);
+        };
+        reader.readAsText(file);
+      });
+
       noteInput.addEventListener("keydown", (event) => {
         if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
           const note = noteInput.value.trim();
@@ -1149,10 +1594,53 @@
         populateSelect(sourceLangSelect, LANGUAGE_OPTIONS, preferredSource);
       }
 
-      initCytoscape();
+      // ====== CRITICAL DEBUG INFO ======
+      console.log("🔵 ====== STARTING INITIALIZATION ======");
+      console.log("🔵 SpeechRecognition in window:", window.SpeechRecognition);
+      console.log(
+        "🔵 webkitSpeechRecognition in window:",
+        window.webkitSpeechRecognition
+      );
+      console.log(
+        "🔵 Mind Elixir available:",
+        typeof MindElixir !== "undefined"
+      );
+
+      // Initialize speech recognition FIRST (critical)
       initialiseControls();
+      console.log("🔵 Controls initialized");
+
       setupRecognition();
+      console.log(
+        "🔵 Recognition setup complete. Initialized:",
+        recognitionInitialized
+      );
+
+      // Initialize mind map (can fail without breaking speech)
+      if (typeof MindElixir !== "undefined") {
+        initMindMap();
+        console.log("🔵 Mind map initialized:", mind !== null);
+      } else {
+        console.warn("⚠️ MindElixir not loaded yet, will retry...");
+        // Retry after a delay
+        setTimeout(() => {
+          if (typeof MindElixir !== "undefined") {
+            initMindMap();
+            console.log("🔵 Mind map initialized (retry):", mind !== null);
+          } else {
+            console.error("❌ MindElixir failed to load");
+          }
+        }, 1000);
+      }
+
       resetSession();
+      console.log(
+        "🔵 Initialization complete. Speech recognition available:",
+        recognitionInitialized,
+        "Recognition object:",
+        !!recognition
+      );
+      console.log("🔵 ====== INITIALIZATION COMPLETE ======");
     </script>
   </body>
 </html>

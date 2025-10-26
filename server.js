@@ -26,19 +26,28 @@ app.post('/api/extract-theme', async (req, res) => {
       return res.status(400).json({ error: 'Sentence too short' });
     }
 
-    const systemPrompt = `You are an expert at extracting the most important theme or concept from a sentence.
-    Your task:
-    1. Extract ONE main theme, concept, or idea from the sentence (maximum 6 words)
-    2. Return it as a single clear phrase or sentence fragment
-    
-    Examples:
-    Input: "I love programming in Python and making web applications"
-    Output: "Web development with Python"
-    
-    Input: "The meeting discussed the new marketing strategy for Q4"
-    Output: "Q4 marketing strategy"
-    
-    Return ONLY the theme/phrase, nothing else.`;
+    const systemPrompt = `You extract ONLY the core theme from a sentence. Return NOTHING else.
+
+CRITICAL RULES:
+1. MAXIMUM 3 words (e.g., "Machine Learning", "Customer Retention", "Budget Planning")
+2. Return ONLY the theme phrase, nothing else
+3. NO explanations, NO greetings, NO conversational text
+4. Focus on THE TOPIC/DOMAIN being discussed
+5. Extract the main business/project topic
+
+EXAMPLES:
+"I love machine learning" → "Machine Learning"
+"Q4 marketing needs approval" → "Marketing Budget"  
+"Customer churn increased" → "Customer Retention"
+"Schedule follow-up meeting" → "Meeting Planning"
+
+DO NOT include:
+- Greetings like "I'd be happy"
+- Explanations
+- Full sentences
+- Anything beyond the 3-word theme
+
+You must return ONLY the theme phrase. If you cannot extract a theme, return the first 3 words of the sentence.`;
 
     const response = await axios.post(
       'https://api.groq.com/openai/v1/chat/completions',
@@ -59,11 +68,29 @@ app.post('/api/extract-theme', async (req, res) => {
       }
     );
 
-    const theme = response.data.choices[0]?.message?.content.trim();
+    const content = response.data.choices[0]?.message?.content?.trim();
+    
+    if (!content) {
+      return res.status(500).json({ error: 'No content from Groq' });
+    }
+    
+    // Clean up the theme - remove any quoted strings, extra whitespace, etc.
+    let theme = content.replace(/^["']|["']$/g, '').trim(); // Remove quotes
+    
+    // If it's still too long or looks like a prompt, extract just the first phrase
+    if (theme.length > 50 || theme.includes('\n')) {
+      theme = theme.split('\n')[0].trim().substring(0, 50);
+    }
+    
+    // Ensure it's not just the system prompt
+    if (theme.toLowerCase().includes('extract') || theme.toLowerCase().includes('theme')) {
+      // Fallback: return a simple version of the sentence
+      theme = sentence.split(/\s+/).slice(0, 3).join(' ');
+    }
     
     res.json({ 
       success: true,
-      theme 
+      theme: theme.substring(0, 100) // Limit to 100 chars
     });
 
   } catch (error) {
@@ -86,15 +113,29 @@ app.post('/api/find-connections', async (req, res) => {
       return res.json({ success: true, connections: [] });
     }
 
-    const systemPrompt = `You are analyzing connections between concepts in a mind map.
-    Given a NEW node (theme) and a list of EXISTING nodes, determine which existing nodes are related to the new node.
-    
-    Return a JSON array of objects with:
-    - "node": the existing node name
-    - "strength": a number 0.1 to 1.0 indicating connection strength
-    - "reason": brief explanation (one word or short phrase)
-    
-    Only include connections with strength >= 0.3.`;
+    const systemPrompt = `You find thematic connections between concepts for a mind map.
+
+CONNECTION STRATEGY:
+- Connect concepts that share the SAME THEME or DOMAIN
+- In business meetings: relate by business context (strategy, execution, metrics, etc.)
+- Look for shared themes, not just word similarity
+- Prioritize substantive relationships over superficial ones
+
+STRENGTH GUIDELINES:
+- 1.0: Direct theme match (e.g., "Marketing Strategy" ↔ "Marketing Budget")
+- 0.8: Strongly related themes (e.g., "Sales Process" ↔ "Customer Retention")
+- 0.6: Indirectly related (e.g., "Product Development" ↔ "Market Research")
+- 0.4-0.5: Weakly related concepts
+
+Return JSON array:
+- Limit to 2-3 STRONGEST connections
+- Return [] ONLY if truly no thematic connection exists
+
+Format:
+[
+  {"node": "Existing Node", "strength": 0.9, "reason": "subtopic"},
+  {"node": "Another Node", "strength": 0.7, "reason": "related"}
+]`;
 
     const userPrompt = `New node: "${newNode}"
     
@@ -125,20 +166,30 @@ Return JSON array of connections.`;
     const content = response.data.choices[0]?.message?.content;
     
     // Extract JSON array, handling markdown code blocks
+    let connections = [];
+    
+    // Try to find JSON array in the content
     let jsonMatch = content.match(/```json\s*(\[[\s\S]*?\])\s*```/);
     if (!jsonMatch) {
       jsonMatch = content.match(/```\s*(\[[\s\S]*?\])\s*```/);
     }
     if (!jsonMatch) {
-      jsonMatch = content.match(/(\[[\s\S]*\])/);
+      // Try to find the last JSON array in the content
+      const jsonArrays = content.match(/\[[\s\S]*?\]/g);
+      if (jsonArrays && jsonArrays.length > 0) {
+        jsonMatch = [null, jsonArrays[jsonArrays.length - 1]];
+      }
     }
     
-    let connections = [];
     if (jsonMatch && jsonMatch[1]) {
       try {
         connections = JSON.parse(jsonMatch[1]);
+        if (!Array.isArray(connections)) {
+          connections = [];
+        }
       } catch (e) {
-        console.error('JSON parse error:', e.message, 'Content:', content);
+        console.error('JSON parse error:', e.message);
+        console.error('Content snippet:', content.substring(0, 300));
       }
     }
 
@@ -179,15 +230,36 @@ app.post('/api/analyze', async (req, res) => {
         messages: [
           {
             role: 'system',
-            content: `You are an expert at analyzing spoken content and extracting key concepts, themes, and relationships. 
-            Extract the most important concepts, ideas, and themes from the following transcript. 
-            Return a JSON object with:
-            1. "concepts": array of key concepts (single words or short phrases)
-            2. "relationships": array of objects with "source", "target", and "strength" fields
-            3. "summary": a brief 2-3 sentence summary of the main points
-            4. "themes": array of main themes or topics discussed
-            
-            Focus on extracting the most important and meaningful information. Only return valid JSON.`
+            content: `You analyze conversations and extract main themes for a mind map.
+
+FOCUS: Extract MAIN THEMES, not just frequent words.
+
+RANKING STRATEGY:
+- Prioritize themes that are CENTRAL to the conversation
+- In business contexts: focus on business objectives, strategies, and key decisions
+- Ignore filler words ("uh", "um", common verbs) even if frequent
+- Extract high-level concepts (e.g., "Customer Acquisition" not "customer, customers, customer's")
+
+MAX 3 WORDS PER CONCEPT.
+
+Return JSON:
+{
+  "concepts": ["Main Theme 1", "Main Theme 2"],  // MAX 3 words each
+  "relationships": [{"source": "Theme1", "target": "Theme2", "strength": 0.8}],
+  "summary": "Conversation summary",
+  "themes": ["Primary Theme", "Secondary Theme"]
+}
+
+Example:
+Transcript: "We need to improve our sales. The marketing budget is tight. Let's focus on customer retention."
+Output: {
+  "concepts": ["Sales Strategy", "Marketing Budget", "Customer Retention"],
+  "relationships": [...],
+  "summary": "...",
+  "themes": ["Business Strategy", "Customer Focus"]
+}
+
+ALWAYS return valid JSON.`
           },
           {
             role: 'user',
@@ -211,9 +283,36 @@ app.post('/api/analyze', async (req, res) => {
       return res.status(500).json({ error: 'No content from Groq' });
     }
 
-    // Parse JSON response
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    const analysis = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+    // Parse JSON response - handle markdown code blocks
+    let analysis = null;
+    try {
+      // Try to extract JSON from markdown code blocks first
+      let jsonStr = content.match(/```json\s*([\s\S]*?)\s*```/);
+      if (!jsonStr) {
+        jsonStr = content.match(/```\s*([\s\S]*?)\s*```/);
+      }
+      if (!jsonStr) {
+        // Try to find JSON object in content
+        jsonStr = content.match(/\{[\s\S]*\}/);
+      }
+      
+      if (jsonStr) {
+        const cleaned = jsonStr[1] || jsonStr[0];
+        analysis = JSON.parse(cleaned.trim());
+      } else {
+        throw new Error('No JSON found in response');
+      }
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError.message);
+      console.error('Content:', content.substring(0, 200));
+      // Return a fallback analysis
+      analysis = {
+        concepts: [],
+        relationships: [],
+        summary: 'Unable to parse AI response',
+        themes: []
+      };
+    }
 
     res.json({ 
       success: true,
@@ -222,6 +321,15 @@ app.post('/api/analyze', async (req, res) => {
 
   } catch (error) {
     console.error('Analysis error:', error.message);
+    
+    // Handle rate limiting specifically
+    if (error.response?.status === 429) {
+      return res.status(429).json({ 
+        error: 'Rate limited',
+        message: 'Too many requests to Groq API. Please wait a moment.'
+      });
+    }
+    
     res.status(500).json({ 
       error: 'Failed to analyze content',
       message: error.message 
