@@ -3,312 +3,352 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI-Powered Realtime Mindmap</title>
+    <title>Talkstorm - AI Mindmap</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap"
       rel="stylesheet"
     />
     <style>
-      :root {
-        color-scheme: light;
-        font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
-          sans-serif;
-        background: #f7f4ef;
-        color: #1f2933;
-      }
-      body {
+      * {
         margin: 0;
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-        background: radial-gradient(
-            circle at top left,
-            rgba(226, 232, 240, 0.6),
-            transparent 55%
-          ),
-          radial-gradient(
-            circle at bottom right,
-            rgba(244, 219, 216, 0.55),
-            transparent 50%
-          ),
-          #f7f4ef;
-      }
-      header {
-        padding: 2.5rem 1.5rem 1.5rem;
-        text-align: center;
-        color: #111827;
-      }
-      header h1 {
-        margin: 0;
-        font-size: clamp(2rem, 4vw, 2.8rem);
-        font-weight: 600;
-        letter-spacing: -0.03em;
-      }
-      header p {
-        margin: 0.75rem auto 0;
-        max-width: 760px;
-        line-height: 1.65;
-        color: rgba(55, 65, 81, 0.75);
-      }
-      main {
-        flex: 1;
-        display: grid;
-        gap: 1.5rem;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        padding: 0 1.5rem 2.5rem;
-      }
-      section {
-        backdrop-filter: blur(14px);
-        background: rgba(255, 255, 255, 0.82);
-        border: 1px solid rgba(209, 213, 219, 0.7);
-        border-radius: 18px;
-        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-      }
-      section h2 {
-        margin: 0;
-        padding: 1.2rem 1.5rem 0.75rem;
-        font-size: 0.95rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        color: rgba(107, 114, 128, 0.9);
-      }
-      .section-body {
-        padding: 0 1.5rem 1.5rem;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        flex: 1;
-      }
-      #controls {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-      }
-      button {
-        border: 1px solid rgba(99, 102, 241, 0.22);
-        border-radius: 999px;
-        padding: 0.65rem 1.2rem;
-        font-weight: 600;
-        font-size: 0.95rem;
-        cursor: pointer;
-        color: #312e81;
-        background: linear-gradient(135deg, #ede9fe, #e0e7ff);
-        transition: transform 0.2s ease, box-shadow 0.2s ease,
-          border-color 0.2s ease;
-        box-shadow: 0 8px 18px rgba(129, 140, 248, 0.2);
-      }
-      button.secondary {
-        background: #ffffff;
-        color: #1f2933;
-        border-color: rgba(209, 213, 219, 0.8);
-        box-shadow: none;
-      }
-      button.danger {
-        background: linear-gradient(135deg, #fee2e2, #fecaca);
-        color: #b91c1c;
-        border-color: rgba(248, 113, 113, 0.4);
-        box-shadow: 0 8px 18px rgba(248, 113, 113, 0.2);
-      }
-      button:disabled {
-        cursor: not-allowed;
-        opacity: 0.6;
-        box-shadow: none;
-      }
-      button:not(:disabled):hover {
-        transform: translateY(-1px);
-        border-color: rgba(99, 102, 241, 0.4);
-      }
-      .status-line {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        align-items: center;
-        font-size: 0.9rem;
-        color: rgba(55, 65, 81, 0.75);
-      }
-      .status-indicator {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background: #f97316;
-        box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.3);
-        animation: pulse 2s infinite;
-      }
-      .status-indicator.active {
-        background: #22c55e;
-        box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
-      }
-      @keyframes pulse {
-        0% {
-          box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.45);
-        }
-        70% {
-          box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
-        }
-        100% {
-          box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
-        }
-      }
-      .control-grid {
-        display: grid;
-        gap: 0.75rem 1.25rem;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      }
-      .control-grid label {
-        font-size: 0.78rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: rgba(107, 114, 128, 0.85);
-      }
-      .control-grid select,
-      .control-grid input[type="text"],
-      .control-grid input[type="range"] {
-        width: 100%;
-        padding: 0.55rem 0.7rem;
-        border-radius: 12px;
-        border: 1px solid rgba(209, 213, 219, 0.9);
-        background: #fdfdfb;
-        color: #1f2933;
-        font-family: inherit;
-      }
-      .control-grid .range-value {
-        font-size: 0.82rem;
-        color: rgba(55, 65, 81, 0.7);
-      }
-      .hint {
-        font-size: 0.82rem;
-        color: rgba(75, 85, 99, 0.75);
-        line-height: 1.5;
-      }
-      #live-transcript,
-      #translation-live {
-        min-height: 80px;
-        padding: 1rem;
-        border-radius: 12px;
-        background: rgba(249, 250, 251, 0.9);
-        border: 1px solid rgba(209, 213, 219, 0.7);
-        line-height: 1.7;
-        color: #1f2937;
-      }
-      #transcript-log,
-      #translation-history {
-        flex: 1;
-        overflow-y: auto;
-        max-height: 320px;
-        padding-right: 0.75rem;
-      }
-      .segment,
-      .translation-item {
-        padding: 0.85rem 1rem;
-        margin-bottom: 0.75rem;
-        background: rgba(255, 255, 255, 0.95);
-        border-radius: 14px;
-        border: 1px solid rgba(226, 232, 240, 0.9);
-        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
-      }
-      .segment time,
-      .translation-item time {
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: rgba(107, 114, 128, 0.7);
-      }
-      .segment p,
-      .translation-item p {
-        margin: 0.45rem 0 0;
-        line-height: 1.6;
-        color: #1f2937;
-      }
-      .translation-item .meta {
-        display: flex;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-        font-size: 0.75rem;
-        color: rgba(107, 114, 128, 0.7);
-        margin-top: 0.4rem;
-      }
-      #mindmap {
-        width: 100%;
-        flex: 1;
-        min-height: 520px;
-        border-top: 1px solid rgba(209, 213, 219, 0.6);
-        background: rgba(241, 245, 249, 0.85);
+        padding: 0;
+        box-sizing: border-box;
       }
 
-      #mindmap > div {
+      :root {
+        color-scheme: dark;
+        font-family: "Inter", system-ui, -apple-system, sans-serif;
+        /* Dark theme color palette */
+        --bg-main: #1e1b2e;
+        --bg-soft: #27223c;
+        --bg-panel: #2d2748;
+        --text-primary: #e2e8f0;
+        --text-secondary: #a0aec0;
+        --dark-blue: #3b82f6;
+        --dark-purple: #8b5cf6;
+        --dark-pink: #ec4899;
+        --dark-cyan: #06b6d4;
+        --border: #4a5568;
+        --shadow: rgba(0, 0, 0, 0.3);
+        --shadow-soft: rgba(0, 0, 0, 0.2);
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        background: linear-gradient(
+          135deg,
+          #1e1b2e 0%,
+          #27223c 50%,
+          #1e1b2e 100%
+        );
+        color: var(--text-primary);
+      }
+
+      /* Top bar with menu button */
+      .top-bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        background: rgba(30, 27, 46, 0.9);
+        backdrop-filter: blur(20px);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        padding: 0 20px;
+        z-index: 1000;
+      }
+
+      .menu-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(
+          135deg,
+          var(--dark-blue),
+          var(--dark-purple)
+        );
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 20px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px var(--shadow);
+      }
+
+      .menu-btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 16px rgba(139, 92, 246, 0.4);
+      }
+
+      /* Main layout: mindmap on left, controls on right */
+      .app-container {
+        display: flex;
+        height: 100vh;
+        padding-top: 60px;
+      }
+
+      /* Left side: Mindmap */
+      .mindmap-panel {
+        flex: 1;
+        position: relative;
+        background: var(--bg-main);
+        border-right: 1px solid var(--border);
+        overflow: hidden;
+      }
+
+      #mindmap {
         width: 100%;
         height: 100%;
+        background: var(--bg-main);
       }
-      #details {
-        flex: 1;
-        overflow-y: auto;
-        max-height: 260px;
+
+      /* Style MindElixir nodes with random bright colors */
+      #mindmap .me-node {
+        background: white !important;
+        border-radius: 8px !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+        padding: 4px 8px !important;
+        border: 2px solid !important;
       }
-      .detail-item {
-        padding: 0.8rem 0;
-        border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+
+      #mindmap .me-node circle {
+        fill: white !important;
       }
-      .detail-item:last-child {
-        border-bottom: none;
+
+      /* Dark text for all nodes */
+      #mindmap text,
+      #mindmap tspan {
+        fill: #1e293b !important;
+        font-weight: 500 !important;
       }
-      textarea {
-        width: 100%;
-        min-height: 90px;
-        border-radius: 12px;
-        border: 1px solid rgba(209, 213, 219, 0.9);
-        background: #ffffff;
-        color: #1f2933;
-        padding: 0.8rem;
-        font-family: inherit;
-        resize: vertical;
+
+      /* Path colors for dark theme */
+      #mindmap path {
+        stroke: var(--dark-cyan) !important;
+        stroke-width: 2px !important;
+        stroke-opacity: 0.6 !important;
       }
-      .metric-pill {
-        display: inline-flex;
+
+      /* Floating Apple-style input bar at bottom */
+      .floating-input {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
+        max-width: 600px;
+        height: 56px;
+        background: rgba(45, 39, 72, 0.95);
+        backdrop-filter: blur(30px);
+        border-radius: 28px;
+        border: 1px solid var(--border);
+        box-shadow: 0 8px 32px var(--shadow-soft);
+        display: flex;
         align-items: center;
-        gap: 0.35rem;
-        padding: 0.3rem 0.65rem;
-        border-radius: 999px;
-        background: rgba(226, 232, 240, 0.8);
-        color: #1f2937;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
+        padding: 0 20px;
+        z-index: 100;
       }
-      .metric-pill.danger {
-        background: rgba(254, 226, 226, 0.85);
-        color: #b91c1c;
+
+      .floating-input input {
+        flex: 1;
+        border: none;
+        background: transparent;
+        outline: none;
+        font-size: 16px;
+        color: var(--text-primary);
+        padding: 0 10px;
       }
-      .metric-pill.success {
-        background: rgba(220, 252, 231, 0.85);
-        color: #15803d;
+
+      .floating-input input::placeholder {
+        color: var(--text-secondary);
       }
-      .status-stack {
+
+      /* Right side: Controls panel */
+      .controls-panel {
+        width: 380px;
+        background: var(--bg-panel);
+        border-left: 1px solid var(--border);
         display: flex;
         flex-direction: column;
-        gap: 0.35rem;
+        overflow-y: auto;
       }
-      .status-stack small {
-        color: rgba(75, 85, 99, 0.7);
+
+      .controls-header {
+        padding: 20px;
+        border-bottom: 1px solid var(--border);
       }
-      .api-key-input {
-        font-size: 0.85rem !important;
-        font-family: monospace;
+
+      .controls-header h2 {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 16px;
       }
+
+      /* Pastel control buttons */
+      .control-buttons {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+
+      .control-btn {
+        flex: 1;
+        height: 40px;
+        border-radius: 20px;
+        border: none;
+        font-weight: 500;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+
+      .control-btn.start {
+        background: linear-gradient(135deg, var(--dark-cyan), #0891b2);
+        color: white;
+      }
+
+      .control-btn.pause {
+        background: linear-gradient(135deg, var(--dark-purple), #7c3aed);
+        color: white;
+      }
+
+      .control-btn.stop {
+        background: linear-gradient(135deg, var(--dark-pink), #db2777);
+        color: white;
+      }
+
+      .control-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px var(--shadow);
+      }
+
+      .control-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      /* Context button */
+      .context-btn {
+        width: 100%;
+        height: 40px;
+        background: linear-gradient(135deg, var(--dark-blue), #2563eb);
+        color: white;
+        border: none;
+        border-radius: 20px;
+        font-weight: 500;
+        font-size: 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-bottom: 16px;
+        transition: all 0.3s ease;
+      }
+
+      .context-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+      }
+
+      /* Combined transcript and AI section */
+      .analysis-section {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+      }
+
+      .section-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 12px;
+      }
+
+      .live-transcript-box {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        padding: 16px;
+        min-height: 120px;
+        margin-bottom: 20px;
+        border: 1px solid var(--border);
+      }
+
+      #live-transcript {
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--text-primary);
+        min-height: 80px;
+      }
+
+      .ai-analysis-box {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        padding: 16px;
+        border: 1px solid var(--border);
+      }
+
+      #ai-output {
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--text-primary);
+      }
+
+      /* Hidden file inputs */
+      #context-input,
+      #file-input {
+        display: none;
+      }
+
+      /* Scrollbar styling */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: var(--bg-soft);
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: var(--dark-blue);
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--dark-purple);
+      }
+
+      /* Mobile responsive */
       @media (max-width: 768px) {
-        header {
-          padding-top: 2rem;
+        .app-container {
+          flex-direction: column;
         }
-        main {
-          padding-bottom: 1.5rem;
+
+        .controls-panel {
+          width: 100%;
+          max-height: 50vh;
         }
-        #cy {
-          min-height: 420px;
+
+        .mindmap-panel {
+          border-right: none;
+          border-bottom: 1px solid var(--border);
         }
       }
     </style>
@@ -319,143 +359,77 @@
     />
   </head>
   <body>
-    <header>
-      <h1>AI-Powered Realtime Mindmap</h1>
-      <p>
-        Capture discussions, lectures, and meetings as they happen. Speech is
-        transcribed live, analyzed by AI to extract key concepts and themes, and
-        visualised as an evolving mindmap so you can spot themes, action items,
-        and emerging ideas instantly.
-      </p>
-    </header>
-    <main>
-      <section>
-        <h2>Configuration</h2>
-        <div class="section-body">
-          <div class="control-grid">
-            <div>
-              <label for="model-select">Groq Model</label>
-              <select id="model-select">
-                <option value="llama-3.1-8b-instant">
-                  Llama 3.1 8B Instant
-                </option>
-                <option value="llama-3.1-70b-versatile">
-                  Llama 3.1 70B Versatile
-                </option>
-                <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
-                <option value="gemma2-9b-it">Gemma 2 9B</option>
-              </select>
-            </div>
-          </div>
-          <p class="hint">
-            The API key is securely stored on the backend. Select your preferred
-            AI model.
-          </p>
-        </div>
-      </section>
+    <!-- Top bar with settings -->
+    <div class="top-bar">
+      <button class="menu-btn" id="menu-btn" title="Settings">⚙️</button>
+    </div>
 
-      <section>
-        <h2>Capture Controls</h2>
-        <div class="section-body">
-          <div id="controls">
-            <button id="start-btn">Start Listening</button>
-            <button id="pause-btn" class="secondary" disabled>Pause</button>
-            <button id="stop-btn" class="danger" disabled>
-              Stop &amp; Reset
-            </button>
-            <button id="export-btn" class="secondary" disabled>
-              Export JSON
-            </button>
-            <button id="load-btn" class="secondary">Load JSON</button>
-            <input
-              type="file"
-              id="file-input"
-              accept=".json"
-              style="display: none"
-            />
-          </div>
-          <div class="status-line">
-            <span id="status-indicator" class="status-indicator"></span>
-            <span id="status-text">Idle • microphone permissions required</span>
-          </div>
-          <div class="control-grid">
-            <div>
-              <label for="source-lang">Source language (ASR)</label>
-              <select id="source-lang"></select>
-            </div>
-            <div>
-              <label for="note-input">Add manual note</label>
-              <textarea
-                id="note-input"
-                placeholder="Type a note or idea and press ⌘/Ctrl + Enter"
-              ></textarea>
-            </div>
-          </div>
-          <p class="hint">
-            The recogniser keeps a rolling buffer. Pause when silence exceeds a
-            few seconds to help with processing. The mindmap uses a heap layout:
-            nodes with highest weight stay in the center, others branch out by
-            weight.
-          </p>
-        </div>
-      </section>
-
-      <section>
-        <h2>Live Transcript</h2>
-        <div class="section-body">
-          <div id="live-transcript">Waiting for speech…</div>
-          <div id="transcript-log"></div>
-        </div>
-      </section>
-
-      <section>
-        <h2>AI Analysis</h2>
-        <div class="section-body">
-          <div class="status-stack" id="ai-status">
-            <div class="metric-pill">Ready</div>
-            <small
-              >AI will analyze your speech to extract key concepts and
-              themes.</small
-            >
-          </div>
-          <div
-            id="ai-output"
-            style="
-              min-height: 80px;
-              padding: 1rem;
-              border-radius: 12px;
-              background: rgba(249, 250, 251, 0.9);
-              border: 1px solid rgba(209, 213, 219, 0.7);
-              line-height: 1.7;
-              color: #1f2937;
-            "
-          >
-            AI insights will appear here...
-          </div>
-        </div>
-      </section>
-
-      <section style="grid-column: 1 / -1; min-height: 640px">
-        <h2>Mindmap</h2>
+    <!-- Main app container -->
+    <div class="app-container">
+      <!-- Left: Mindmap -->
+      <div class="mindmap-panel">
         <div id="mindmap"></div>
-      </section>
 
-      <section>
-        <h2>Focus Panel</h2>
-        <div class="section-body" id="details">
-          <p>
-            Select a node in the mindmap to see the most recent notes and quotes
-            linked to it.
-          </p>
+        <!-- Floating Apple-style input bar -->
+        <div class="floating-input">
+          <input
+            type="text"
+            id="floating-note-input"
+            placeholder="Add a note or context..."
+            autocomplete="off"
+          />
         </div>
-      </section>
-    </main>
+      </div>
+
+      <!-- Right: Controls -->
+      <div class="controls-panel">
+        <div class="controls-header">
+          <h2>Talkstorm</h2>
+
+          <!-- Control buttons -->
+          <div class="control-buttons">
+            <button class="control-btn start" id="start-btn">▶ Start</button>
+            <button class="control-btn pause" id="pause-btn" disabled>
+              ⏸ Pause
+            </button>
+            <button class="control-btn stop" id="stop-btn" disabled>
+              ⏹ Stop
+            </button>
+          </div>
+
+          <!-- Context upload button -->
+          <button class="context-btn" id="context-btn">
+            📎 Upload Context
+          </button>
+          <input type="file" id="context-input" accept=".txt,.pdf,.doc,.docx" />
+
+          <!-- Load JSON button (hidden by default, can be added to menu) -->
+          <input
+            type="file"
+            id="file-input"
+            accept=".json"
+            style="display: none"
+          />
+        </div>
+
+        <!-- Combined analysis section -->
+        <div class="analysis-section">
+          <div class="live-transcript-box">
+            <div class="section-title">Live Transcript</div>
+            <div id="live-transcript">Waiting for speech…</div>
+          </div>
+
+          <div class="ai-analysis-box">
+            <div class="section-title">AI Analysis</div>
+            <div id="ai-output">AI insights will appear here...</div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <script>
       const SpeechRecognition =
         window.SpeechRecognition || window.webkitSpeechRecognition;
-
-      // STOPWORDS removed - AI handles intelligent filtering
 
       const LANGUAGE_OPTIONS = [
         { code: "auto", label: "Auto detect" },
@@ -488,6 +462,9 @@
         });
       }
 
+      // Track consecutive 429 errors for exponential backoff
+      let consecutive429Errors = 0;
+
       async function processQueue() {
         if (isProcessingQueue || apiCallQueue.length === 0) return;
 
@@ -500,15 +477,43 @@
             const result = await apiFunction();
             resolve(result);
 
+            // Reset 429 counter on success
+            if (consecutive429Errors > 0) {
+              consecutive429Errors = 0;
+            }
+
             // Wait between API calls to respect rate limits
             const now = Date.now();
             const timeSinceLastCall = now - lastAICall;
+            let waitTime = 0;
+
             if (timeSinceLastCall < AI_RATE_LIMIT_MS) {
-              const waitTime = AI_RATE_LIMIT_MS - timeSinceLastCall;
+              waitTime = AI_RATE_LIMIT_MS - timeSinceLastCall;
+            }
+
+            // Exponential backoff if we've been rate limited
+            if (consecutive429Errors > 0) {
+              waitTime = Math.max(
+                waitTime,
+                1000 * Math.min(consecutive429Errors * 2, 10)
+              );
+              console.log(
+                `⏸️ Backing off for ${waitTime}ms due to rate limiting`
+              );
+            }
+
+            if (waitTime > 0) {
               await new Promise((r) => setTimeout(r, waitTime));
             }
             lastAICall = Date.now();
           } catch (error) {
+            // Track 429 errors for exponential backoff
+            if (error.message && error.message.includes("429")) {
+              consecutive429Errors++;
+              console.warn(
+                `⚠️ Rate limited (${consecutive429Errors} consecutive). Backing off...`
+              );
+            }
             reject(error);
           }
         }
@@ -527,49 +532,73 @@
       let aiAnalysisPending = false;
       let aiAnalysisQueue = [];
       let lastAICall = 0;
-      const AI_RATE_LIMIT_MS = 2000; // Wait 2 seconds between AI calls
+      const AI_RATE_LIMIT_MS = 3000; // Wait 3 seconds between AI calls
 
       // For continuous speech without pauses
       let lastTranscriptTime = Date.now();
       let lastFinalTime = Date.now();
       const CONTINUOUS_SPEECH_TIMEOUT = 5000; // 5 seconds before forcing finalization
 
-      // Backend API is now handling the API key securely
-
       let mind = null; // Mind Elixir instance
 
-      // Get all DOM elements
-      const statusIndicator = document.getElementById("status-indicator");
-      const statusText = document.getElementById("status-text");
+      // Get DOM elements
       const startBtn = document.getElementById("start-btn");
       const pauseBtn = document.getElementById("pause-btn");
       const stopBtn = document.getElementById("stop-btn");
-      const exportBtn = document.getElementById("export-btn");
+      const contextBtn = document.getElementById("context-btn");
+      const contextInput = document.getElementById("context-input");
+      const fileInput = document.getElementById("file-input");
       const liveTranscript = document.getElementById("live-transcript");
-      const transcriptLog = document.getElementById("transcript-log");
-      const noteInput = document.getElementById("note-input");
-      const detailsPanel = document.getElementById("details");
-      const sourceLangSelect = document.getElementById("source-lang");
-      const modelSelect = document.getElementById("model-select");
       const aiOutput = document.getElementById("ai-output");
-      const aiStatus = document.getElementById("ai-status");
+      const floatingNoteInput = document.getElementById("floating-note-input");
+      const menuBtn = document.getElementById("menu-btn");
+
+      // Generate random bright colors for nodes
+      function getRandomBrightColor() {
+        const brightColors = [
+          "#FF6B9D", // Bright pink
+          "#4ECDC4", // Bright turquoise
+          "#FFE66D", // Bright yellow
+          "#A8E6CF", // Bright mint
+          "#FFB4D8", // Bright rose
+          "#B4E4FF", // Bright sky blue
+          "#DDA0DD", // Lavender
+          "#FFD93D", // Golden yellow
+          "#6BCB77", // Green
+          "#FF8787", // Coral
+          "#9B59B6", // Purple
+          "#3498DB", // Blue
+          "#E74C3C", // Red
+          "#1ABC9C", // Teal
+          "#F39C12", // Orange
+        ];
+        return brightColors[Math.floor(Math.random() * brightColors.length)];
+      }
+
+      function applyNodeColors() {
+        // Apply colors after a short delay to ensure nodes are rendered
+        setTimeout(() => {
+          const nodes = document.querySelectorAll("#mindmap .me-node");
+          nodes.forEach((node, index) => {
+            const color =
+              index === 0
+                ? "linear-gradient(135deg, #3b82f6, #8b5cf6)"
+                : getRandomBrightColor();
+            node.style.background = color;
+            node.style.borderColor = color;
+          });
+        }, 100);
+      }
 
       function initMindMap() {
         try {
           if (typeof MindElixir === "undefined") {
-            console.error("❌ Mind Elixir not loaded - skipping mind map init");
-            // Create a placeholder
-            const mindmapEl = document.getElementById("mindmap");
-            if (mindmapEl) {
-              mindmapEl.innerHTML =
-                "<p style='padding: 20px; text-align: center;'>Mind map will appear here. Mind Elixir loading...</p>";
-            }
+            console.error("❌ Mind Elixir not loaded");
             return;
           }
 
           console.log("🔵 MindElixir found:", typeof MindElixir);
 
-          // Create instance with new
           mind = new MindElixir({
             el: "#mindmap",
             direction: MindElixir.SIDE,
@@ -579,18 +608,18 @@
             keypress: false,
             draggable: false,
             editable: false,
+            primaryNodeBackground: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
+            primaryNodeColor: "#e2e8f0",
           });
 
-          // Create initial data using "Talkstorm" as root
           const initialData = {
             topic: "Talkstorm",
             id: "talkstorm",
             expanded: true,
           };
 
-          // Initialize with data
           mind.init(initialData);
-
+          applyNodeColors();
           console.log("✅ Mind map initialized");
         } catch (error) {
           console.error("❌ Error initializing mind map:", error);
@@ -601,7 +630,6 @@
       function convertToMindElixirFormat(sortedNodes) {
         const n = sortedNodes.length;
 
-        // Root node is always "Talkstorm"
         const rootNode = {
           topic: "Talkstorm",
           id: "talkstorm",
@@ -613,7 +641,6 @@
         }
 
         if (n <= 5) {
-          // For ≤5 nodes: Simple linear structure - all as direct children of Talkstorm
           rootNode.children = sortedNodes.map((node) => ({
             topic: node.label,
             id: node.id,
@@ -621,11 +648,6 @@
           }));
           return rootNode;
         }
-
-        // For >5 nodes: Hub & Spoke layout
-        // 1) Talkstorm (center/root)
-        // 2) Bubble nodes: up to 35% of total, directly connected to Talkstorm
-        // 3) Branch nodes: rest, children of bubble nodes
 
         const bubbleSize = Math.max(1, Math.floor(n * 0.35));
         const bubbleNodes = sortedNodes.slice(0, bubbleSize);
@@ -635,9 +657,7 @@
           `📊 Talkstorm Layout: ${n} nodes | Bubble: ${bubbleNodes.length} | Branches: ${branchNodes.length}`
         );
 
-        // Build bubble layer (direct children of Talkstorm)
         const bubbleChildren = bubbleNodes.map((bubbleNode) => {
-          // Each bubble node gets some branch nodes as children
           const childrenPerBubble = Math.floor(
             branchNodes.length / bubbleNodes.length
           );
@@ -657,9 +677,7 @@
           };
         });
 
-        // Build root with bubble children
         rootNode.children = bubbleChildren;
-
         return rootNode;
       }
 
@@ -677,13 +695,10 @@
       }
 
       function tokenize(text) {
-        // Simple tokenization for storing segments (AI handles the intelligence)
         return (text.toLowerCase().match(/[a-z0-9'\-]+/g) || []).filter(
           (token) => token.length > 2
         );
       }
-
-      // extractPhrases() removed - AI handles intelligent phrase extraction
 
       function decayGraph(factor = 0.995) {
         for (const node of graph.nodes.values()) {
@@ -707,7 +722,6 @@
         graph.nodes.get(id).weight += increment;
       }
 
-      // Check if a node with similar label already exists
       function findExistingNode(label) {
         const normalizedLabel = label.toLowerCase();
         for (const [nodeId, node] of graph.nodes.entries()) {
@@ -719,10 +733,8 @@
       }
 
       function addEdge(a, b, increment) {
-        // Validate and normalize increment
         const safeIncrement =
           increment && !isNaN(increment) ? Number(increment) : 1;
-
         const id = a < b ? `${a}|${b}` : `${b}|${a}`;
         if (!graph.edges.has(id)) {
           graph.edges.set(id, {
@@ -736,7 +748,6 @@
         }
       }
 
-      // Track recent text to prevent duplicate processing (anti-stutter)
       const recentTextHashes = new Map();
       function hashText(text) {
         let hash = 0;
@@ -761,7 +772,6 @@
 
         recentTextHashes.set(hash, now);
 
-        // Cleanup old hashes
         for (const [h, time] of recentTextHashes.entries()) {
           if (now - time > withinMs * 10) {
             recentTextHashes.delete(h);
@@ -775,31 +785,24 @@
         if (!text.trim()) return;
 
         const now = Date.now();
-
-        // Update transcript timestamp
         lastTranscriptTime = now;
 
-        // Track when we last had a final result
         if (isFinal) {
           lastFinalTime = now;
         }
 
-        // Check if continuous speech without pause (force finalization)
         const timeSinceLastFinal = now - lastFinalTime;
         const isForcedFinal =
           !isFinal &&
           timeSinceLastFinal > CONTINUOUS_SPEECH_TIMEOUT &&
           text.length > 30;
 
-        // Combine natural finalization with forced finalization
         const shouldProcessAsFinal = isFinal || isForcedFinal;
 
-        // Skip if this is a duplicate of recent text (within 1 second)
         if (shouldProcessAsFinal && isDuplicate(text, 1000)) {
           return;
         }
 
-        // For final sentences, use AI to extract theme
         if (shouldProcessAsFinal && text.length > 20) {
           if (isForcedFinal) {
             console.log(
@@ -809,9 +812,8 @@
             );
           }
           await processWithAI(text);
-          lastFinalTime = now; // Reset timer after processing
+          lastFinalTime = now;
         } else if (text.length > 20) {
-          // For interim results, skip AI processing to save API calls
           return;
         }
 
@@ -829,7 +831,6 @@
           }
           appendSegment(text, timestamp);
 
-          // Keep bulk analysis for summary display
           await analyzeWithGroq();
         }
       }
@@ -838,7 +839,6 @@
         try {
           updateAIStatus("Extracting theme...", false);
 
-          // Step 1: Extract theme from sentence (queued)
           const { theme } = await queueAPICall(async () => {
             const themeResponse = await fetch(
               "http://localhost:3001/api/extract-theme",
@@ -847,7 +847,7 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   sentence,
-                  model: modelSelect.value,
+                  model: "llama-3.1-8b-instant",
                 }),
               }
             );
@@ -880,7 +880,6 @@
 
           if (isConversational || theme.length > 50) {
             console.warn(`🚫 Rejected conversational theme: "${theme}"`);
-            // Extract first 3 words as fallback
             const words = sentence
               .split(/\s+/)
               .filter((w) => w.length > 2)
@@ -889,19 +888,13 @@
             console.log(`✅ Using fallback theme: "${theme}"`);
           }
 
-          // Step 2: Get existing nodes with their current weights
           const allExistingNodes = Array.from(graph.nodes.values());
-
-          // Filter to top N nodes by weight for faster, more relevant connections
-          // This focuses on the most important/recent topics
-          const MAX_NODES_TO_CONSIDER = 15; // Consider top 15 nodes
+          const MAX_NODES_TO_CONSIDER = 15;
           const topExistingNodes = allExistingNodes
             .sort((a, b) => b.weight - a.weight)
             .slice(0, MAX_NODES_TO_CONSIDER);
-
           const existingNodeLabels = topExistingNodes.map((n) => n.label);
 
-          // Step 3: Find connections to existing nodes (queued)
           updateAIStatus("Finding connections...", false);
           const { connections: connectionsData } = await queueAPICall(
             async () => {
@@ -913,7 +906,7 @@
                   body: JSON.stringify({
                     newNode: theme,
                     existingNodes: existingNodeLabels,
-                    model: modelSelect.value,
+                    model: "llama-3.1-8b-instant",
                   }),
                 }
               );
@@ -929,8 +922,6 @@
 
           let connections = connectionsData || [];
 
-          // Ensure at least one connection to maintain single graph
-          // If no AI connections found, connect to the highest weighted node from ALL nodes
           if (connections.length === 0 && allExistingNodes.length > 0) {
             const highestWeighted = allExistingNodes.sort(
               (a, b) => b.weight - a.weight
@@ -942,14 +933,11 @@
             });
           }
 
-          // Step 4: Reassign weights to existing nodes based on relevance
-          // Nodes mentioned in connections get additional weight
-          const weightIncrement = 3; // Add weight to connected existing nodes
-          const validatedConnections = []; // Store validated connections for reporting
+          const weightIncrement = 3;
+          const validatedConnections = [];
 
           for (const conn of connections) {
             const nodeId = conn.node.toLowerCase();
-            // Validate conn.strength and ensure it's numeric
             const strength = Number(conn.strength);
             const validStrength =
               !isNaN(strength) && strength > 0 ? strength : 0.5;
@@ -957,10 +945,8 @@
             if (graph.nodes.has(nodeId)) {
               const node = graph.nodes.get(nodeId);
               node.weight += weightIncrement * validStrength;
-              // Cap weight at a reasonable maximum
               node.weight = Math.min(node.weight, 100);
 
-              // Store for reporting
               validatedConnections.push({
                 node: conn.node,
                 strength: validStrength,
@@ -968,34 +954,26 @@
             }
           }
 
-          // Step 5: Check if theme already exists (avoid duplicates)
-          // Normalize theme ID to lowercase to prevent duplicates
           const normalizedThemeId = theme.toLowerCase().trim();
-
-          // Check if node exists by ID (normalized)
           let existingNode;
           if (graph.nodes.has(normalizedThemeId)) {
             existingNode = graph.nodes.get(normalizedThemeId);
           } else {
-            // Check by label match as fallback
             existingNode = findExistingNode(theme);
           }
 
           let nodeWeight;
           if (existingNode) {
-            // Node already exists, just increase its weight
-            existingNode.weight += weightIncrement + 5; // Add bonus for being mentioned
-            existingNode.weight = Math.min(existingNode.weight, 100); // Cap
+            existingNode.weight += weightIncrement + 5;
+            existingNode.weight = Math.min(existingNode.weight, 100);
             nodeWeight = existingNode.weight;
           } else {
-            // New node, add it with normalized ID but proper label
             const baseWeight = 5;
             const connectionBonus = connections.length * 2;
             nodeWeight = baseWeight + connectionBonus;
             addNode(normalizedThemeId, theme, nodeWeight);
           }
 
-          // Step 6: Add connections to existing nodes using validated connections
           for (const conn of validatedConnections) {
             addEdge(
               normalizedThemeId,
@@ -1004,13 +982,9 @@
             );
           }
 
-          // Step 7: Apply decay to nodes not connected to recent themes
           decayGraph(0.995);
-
-          // Step 8: Update mindmap with heap layout
           updateMindmap();
 
-          // Calculate weight changes using validated connections
           const weightChanges = [];
           for (const conn of validatedConnections) {
             weightChanges.push(
@@ -1044,34 +1018,27 @@
         if (aiAnalysisPending) return;
 
         const transcriptsToAnalyze = recentTranscripts.slice(-3).join(" ");
-        if (transcriptsToAnalyze.length < 50) return; // Wait for more content
+        if (transcriptsToAnalyze.length < 50) return;
 
         aiAnalysisPending = true;
         updateAIStatus("Analyzing...", false);
 
         try {
-          const model = modelSelect.value;
-
-          // Call backend API (queued to serialize with other API calls)
           const data = await queueAPICall(async () => {
             const response = await fetch("http://localhost:3001/api/analyze", {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 transcripts: transcriptsToAnalyze,
-                model: model,
+                model: "llama-3.1-8b-instant",
               }),
             });
 
-            // Check response status first
             if (!response.ok) {
               const errorData = await response
                 .json()
                 .catch(() => ({ error: "Unknown error" }));
 
-              // Handle rate limiting
               if (response.status === 429) {
                 updateAIStatus(
                   "Rate limited - slowing down...",
@@ -1081,7 +1048,6 @@
                 throw new Error("Rate limited");
               }
 
-              // Other errors
               throw new Error(
                 errorData.message ||
                   errorData.error ||
@@ -1101,8 +1067,6 @@
           }
         } catch (error) {
           console.error("AI Analysis error:", error);
-
-          // Only show generic errors if not handled above
           if (
             !error.message.includes("429") &&
             !error.message.includes("Rate limited")
@@ -1115,24 +1079,19 @@
       }
 
       function processAIAnalysis(analysis) {
-        // Add concepts as nodes
         if (analysis.concepts) {
           analysis.concepts.forEach((concept) => {
             const normalizedConcept = concept.toLowerCase().trim();
-            addNode(normalizedConcept, concept, 5); // Higher weight for AI-extracted concepts
+            addNode(normalizedConcept, concept, 5);
           });
         }
 
-        // Add relationships as edges
         if (analysis.relationships) {
           analysis.relationships.forEach((rel) => {
             const source = rel.source?.toLowerCase().trim();
             const target = rel.target?.toLowerCase().trim();
-            // Ensure strength is numeric and valid
             let strength = Number(rel.strength);
-            if (isNaN(strength) || strength <= 0) {
-              strength = 1;
-            }
+            if (isNaN(strength) || strength <= 0) strength = 1;
             strength = Math.min(strength, 10);
 
             if (source && target && source !== target) {
@@ -1167,38 +1126,19 @@
       }
 
       function updateAIStatus(message, success = false, error = null) {
-        aiStatus.innerHTML = "";
-        const pill = document.createElement("div");
-        pill.className = success
-          ? "metric-pill success"
-          : error
-          ? "metric-pill danger"
-          : "metric-pill";
-        pill.textContent = message;
-        aiStatus.appendChild(pill);
-
-        if (error) {
-          const errorText = document.createElement("small");
-          errorText.textContent = error;
-          errorText.style.color = "#b91c1c";
-          aiStatus.appendChild(errorText);
-        }
+        aiOutput.innerHTML = `<p class="${
+          success ? "success" : ""
+        }">${message}${
+          error
+            ? '<br><small style="color: #b91c1c;">' + error + "</small>"
+            : ""
+        }</p>`;
       }
 
       function appendSegment(text, timestamp) {
-        const wrapper = document.createElement("div");
-        wrapper.className = "segment";
-        const timeEl = document.createElement("time");
-        timeEl.textContent = new Intl.DateTimeFormat([], {
-          hour: "numeric",
-          minute: "2-digit",
-          second: "2-digit",
-        }).format(new Date(timestamp));
-        const textEl = document.createElement("p");
-        textEl.textContent = text;
-        wrapper.appendChild(timeEl);
-        wrapper.appendChild(textEl);
-        transcriptLog.prepend(wrapper);
+        // Update live transcript
+        liveTranscript.textContent = text;
+        console.log("📋 Transcript updated:", text);
       }
 
       function updateMindmap() {
@@ -1206,51 +1146,17 @@
           console.warn("⚠️ Mind map not available yet");
           return;
         }
-        const maxVisibleNodes = 20; // Show top 20 nodes
+        const maxVisibleNodes = 20;
 
-        // Get top N nodes by weight (these will be shown)
         const sortedNodes = Array.from(graph.nodes.values()).sort(
           (a, b) => b.weight - a.weight
         );
-
-        // Take top 20 - these will be arranged in mind map
         const visibleNodes = sortedNodes.slice(0, maxVisibleNodes);
-
-        // Convert to Mind Elixir format (heap structure)
         const mindData = convertToMindElixirFormat(visibleNodes);
-
-        // Update the mind map by re-initializing with new data
         mind.init({ nodeData: mindData });
-      }
 
-      function showNodeDetails(nodeId) {
-        const relatedSegments = segments
-          .filter((seg) => seg.tokens.includes(nodeId))
-          .slice(-6)
-          .reverse();
-
-        detailsPanel.innerHTML = "";
-        if (!relatedSegments.length) {
-          detailsPanel.innerHTML =
-            "<p>No captured quotes linked to this topic yet.</p>";
-          return;
-        }
-
-        for (const seg of relatedSegments) {
-          const item = document.createElement("div");
-          item.className = "detail-item";
-          const time = document.createElement("time");
-          time.textContent = new Intl.DateTimeFormat([], {
-            hour: "numeric",
-            minute: "2-digit",
-            second: "2-digit",
-          }).format(new Date(seg.createdAt));
-          const text = document.createElement("p");
-          text.textContent = seg.text;
-          item.appendChild(time);
-          item.appendChild(text);
-          detailsPanel.appendChild(item);
-        }
+        // Reapply colors after update
+        applyNodeColors();
       }
 
       function resetSession() {
@@ -1258,154 +1164,42 @@
         graph.edges.clear();
         segments.length = 0;
         recentTranscripts.length = 0;
-        transcriptLog.innerHTML = "";
-        detailsPanel.innerHTML =
-          "<p>Select a node in the mindmap to see the most recent notes and quotes linked to it.</p>";
         liveTranscript.textContent = "Waiting for speech…";
         aiOutput.textContent = "AI insights will appear here...";
-        updateAIStatus("Ready", false);
         updateMindmap();
 
-        // Only enable start button if recognition is initialized
         startBtn.disabled = !recognitionInitialized;
         pauseBtn.disabled = true;
         stopBtn.disabled = true;
-        exportBtn.disabled = true;
-        pauseBtn.textContent = "Pause";
         isCapturing = false;
         isPaused = false;
         allowAutoRestart = false;
-
-        if (!recognitionInitialized) {
-          setStatus("Initializing speech recognition...", false);
-        } else {
-          setStatus("Ready • Click 'Start Listening' to begin", false);
-        }
-      }
-
-      function exportSession() {
-        const payload = {
-          exportedAt: new Date().toISOString(),
-          segments,
-          nodes: Array.from(graph.nodes.values()).map((n) => ({
-            id: n.id,
-            label: n.label,
-            weight: n.weight,
-          })),
-          edges: Array.from(graph.edges.values()).map((e) => ({
-            id: e.id,
-            source: e.source,
-            target: e.target,
-            weight: e.weight,
-          })),
-          metadata: {
-            totalNodes: graph.nodes.size,
-            totalEdges: graph.edges.size,
-            maxWeight: Math.max(
-              ...Array.from(graph.nodes.values()).map((n) => n.weight),
-              0
-            ),
-          },
-        };
-        const blob = new Blob([JSON.stringify(payload, null, 2)], {
-          type: "application/json",
-        });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `mindmap-${Date.now()}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
-
-      function loadSession(jsonData) {
-        try {
-          const data =
-            typeof jsonData === "string" ? JSON.parse(jsonData) : jsonData;
-
-          // Clear current state
-          graph.nodes.clear();
-          graph.edges.clear();
-
-          // Load nodes with their weights
-          if (data.nodes && Array.isArray(data.nodes)) {
-            data.nodes.forEach((node) => {
-              graph.nodes.set(node.id, {
-                id: node.id,
-                label: node.label,
-                weight: node.weight || 0,
-              });
-            });
-          }
-
-          // Load edges with their weights
-          if (data.edges && Array.isArray(data.edges)) {
-            data.edges.forEach((edge) => {
-              graph.edges.set(edge.id, {
-                id: edge.id,
-                source: edge.source,
-                target: edge.target,
-                weight: edge.weight || 0,
-              });
-            });
-          }
-
-          updateMindmap();
-
-          updateAIStatus("Graph loaded successfully", true);
-        } catch (error) {
-          console.error("Load error:", error);
-          updateAIStatus("Failed to load graph", false, error.message);
-        }
       }
 
       function setStatus(text, active) {
-        statusText.textContent = text;
-        statusIndicator.classList.toggle("active", active);
+        aiOutput.textContent = text;
       }
 
       function setupRecognition() {
         console.log("=== SETUP RECOGNITION START ===");
-        console.log("SpeechRecognition available:", !!SpeechRecognition);
-        console.log("Window.SpeechRecognition:", window.SpeechRecognition);
-        console.log(
-          "Window.webkitSpeechRecognition:",
-          window.webkitSpeechRecognition
-        );
 
         try {
           if (!SpeechRecognition) {
-            console.error(
-              "❌ Speech recognition not available in this browser"
-            );
+            console.error("❌ Speech recognition not available");
             setStatus(
-              "Speech recognition unavailable in this browser. Please use Chrome-based browsers.",
+              "Speech recognition unavailable. Please use Chrome/Edge.",
               false
             );
             startBtn.disabled = true;
             recognitionInitialized = false;
-            console.log(
-              "recognitionInitialized set to:",
-              recognitionInitialized
-            );
             return;
           }
 
-          console.log("Creating SpeechRecognition instance...");
           recognition = new SpeechRecognition();
-          console.log("✅ Recognition object created:", !!recognition);
-
           recognitionInitialized = true;
-          console.log(
-            "✅ recognitionInitialized set to:",
-            recognitionInitialized
-          );
           recognition.continuous = true;
           recognition.interimResults = true;
-          recognition.lang =
-            sourceLangSelect.value === "auto"
-              ? navigator.language || "en-US"
-              : sourceLangSelect.value;
+          recognition.lang = navigator.language || "en-US";
 
           recognition.onresult = (event) => {
             let interimTranscript = "";
@@ -1442,13 +1236,11 @@
 
           recognition.onend = () => {
             if (isCapturing && !isPaused && allowAutoRestart) {
-              setStatus("Restarting capture…", true);
               recognition.start();
             }
           };
         } catch (error) {
           console.error("❌ ERROR in setupRecognition:", error);
-          console.error("Stack trace:", error.stack);
           recognitionInitialized = false;
           setStatus(
             "Failed to initialize speech recognition: " + error.message,
@@ -1456,48 +1248,27 @@
           );
           startBtn.disabled = true;
         }
-        console.log(
-          "=== SETUP RECOGNITION END. Initialized:",
-          recognitionInitialized,
-          "==="
-        );
+        console.log("=== SETUP RECOGNITION END ===");
       }
 
+      // Event listeners
       startBtn.addEventListener("click", () => {
-        console.log("🔴 Start button clicked");
-        console.log("🔴 Recognition initialized:", recognitionInitialized);
-        console.log("🔴 Recognition object exists:", !!recognition);
-
         if (!recognitionInitialized || !recognition) {
-          console.error("🔴 Speech recognition not initialized");
-          console.error("🔴 Details:", {
-            recognitionInitialized,
-            recognition: !!recognition,
-            SpeechRecognitionAvailable: !!SpeechRecognition,
-          });
           setStatus(
-            "Speech recognition not initialized. Check console for details (F12). Browser must be Chrome/Edge.",
+            "Speech recognition not initialized. Check console (F12).",
             false
           );
           return;
         }
-        recognition.lang =
-          sourceLangSelect.value === "auto"
-            ? navigator.language || "en-US"
-            : sourceLangSelect.value;
+        recognition.lang = navigator.language || "en-US";
         allowAutoRestart = true;
         recognition.start();
         isCapturing = true;
         isPaused = false;
-        pauseBtn.textContent = "Pause";
-        setStatus(
-          "Listening… speak naturally for live AI-powered mindmap.",
-          true
-        );
+        setStatus("Listening… speak naturally.", true);
         startBtn.disabled = true;
         pauseBtn.disabled = false;
         stopBtn.disabled = false;
-        exportBtn.disabled = false;
       });
 
       pauseBtn.addEventListener("click", () => {
@@ -1506,21 +1277,15 @@
           allowAutoRestart = false;
           recognition.stop();
           isPaused = true;
-          pauseBtn.textContent = "Resume";
+          pauseBtn.textContent = "▶ Resume";
           setStatus("Paused • resume when ready", false);
         } else {
-          recognition.lang =
-            sourceLangSelect.value === "auto"
-              ? navigator.language || "en-US"
-              : sourceLangSelect.value;
+          recognition.lang = navigator.language || "en-US";
           allowAutoRestart = true;
           recognition.start();
           isPaused = false;
-          pauseBtn.textContent = "Pause";
-          setStatus(
-            "Listening… speak naturally for live AI-powered mindmap.",
-            true
-          );
+          pauseBtn.textContent = "⏸ Pause";
+          setStatus("Listening… speak naturally.", true);
         }
       });
 
@@ -1532,114 +1297,64 @@
         resetSession();
       });
 
-      exportBtn.addEventListener("click", exportSession);
+      contextBtn.addEventListener("click", () => {
+        contextInput.click();
+      });
 
-      const loadBtn = document.getElementById("load-btn");
-      const fileInput = document.getElementById("file-input");
-
-      loadBtn.addEventListener("click", () => {
-        fileInput.click();
+      contextInput.addEventListener("change", (event) => {
+        const file = event.target.files[0];
+        if (file) {
+          console.log("📎 Context file selected:", file.name);
+          // TODO: Process file for context
+        }
       });
 
       fileInput.addEventListener("change", (event) => {
         const file = event.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onload = (e) => {
-          loadSession(e.target.result);
+          // TODO: Load session
         };
         reader.readAsText(file);
       });
 
-      noteInput.addEventListener("keydown", (event) => {
+      floatingNoteInput.addEventListener("keydown", (event) => {
         if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-          const note = noteInput.value.trim();
+          const note = floatingNoteInput.value.trim();
           if (note) {
+            console.log("📝 User input:", note);
+            // Process as voice input - goes through same AI pipeline
             processTranscript(note, true);
-            noteInput.value = "";
+            floatingNoteInput.value = "";
           }
         }
       });
 
-      sourceLangSelect.addEventListener("change", () => {
-        const lang = sourceLangSelect.value;
-        if (recognition) {
-          const wasActive = isCapturing && !isPaused;
-          if (wasActive) {
-            allowAutoRestart = false;
-            recognition.stop();
-          }
-          recognition.lang =
-            lang === "auto" ? navigator.language || "en-US" : lang;
-          if (wasActive) {
-            setTimeout(() => {
-              allowAutoRestart = true;
-              recognition.start();
-            }, 250);
+      // Also allow Enter key for quick input
+      floatingNoteInput.addEventListener("keypress", (event) => {
+        if (event.key === "Enter" && !event.metaKey && !event.ctrlKey) {
+          event.preventDefault();
+          const note = floatingNoteInput.value.trim();
+          if (note) {
+            console.log("📝 User input (Enter):", note);
+            processTranscript(note, true);
+            floatingNoteInput.value = "";
           }
         }
-        setStatus(
-          `Source language set to ${sourceLangSelect.selectedOptions[0].textContent}.`,
-          isCapturing && !isPaused
+      });
+
+      menuBtn.addEventListener("click", () => {
+        alert(
+          "Settings menu - Coming soon!\n\nOptions will include:\n- Font size\n- Map size\n- Language selection"
         );
       });
 
-      function initialiseControls() {
-        const preferredSource =
-          navigator.language &&
-          LANGUAGE_OPTIONS.some((l) => l.code === navigator.language)
-            ? navigator.language
-            : "en-US";
-        populateSelect(sourceLangSelect, LANGUAGE_OPTIONS, preferredSource);
-      }
-
-      // ====== CRITICAL DEBUG INFO ======
+      // Initialize
       console.log("🔵 ====== STARTING INITIALIZATION ======");
-      console.log("🔵 SpeechRecognition in window:", window.SpeechRecognition);
-      console.log(
-        "🔵 webkitSpeechRecognition in window:",
-        window.webkitSpeechRecognition
-      );
-      console.log(
-        "🔵 Mind Elixir available:",
-        typeof MindElixir !== "undefined"
-      );
-
-      // Initialize speech recognition FIRST (critical)
-      initialiseControls();
-      console.log("🔵 Controls initialized");
-
+      initMindMap();
       setupRecognition();
-      console.log(
-        "🔵 Recognition setup complete. Initialized:",
-        recognitionInitialized
-      );
-
-      // Initialize mind map (can fail without breaking speech)
-      if (typeof MindElixir !== "undefined") {
-        initMindMap();
-        console.log("🔵 Mind map initialized:", mind !== null);
-      } else {
-        console.warn("⚠️ MindElixir not loaded yet, will retry...");
-        // Retry after a delay
-        setTimeout(() => {
-          if (typeof MindElixir !== "undefined") {
-            initMindMap();
-            console.log("🔵 Mind map initialized (retry):", mind !== null);
-          } else {
-            console.error("❌ MindElixir failed to load");
-          }
-        }, 1000);
-      }
-
       resetSession();
-      console.log(
-        "🔵 Initialization complete. Speech recognition available:",
-        recognitionInitialized,
-        "Recognition object:",
-        !!recognition
-      );
       console.log("🔵 ====== INITIALIZATION COMPLETE ======");
     </script>
   </body>
